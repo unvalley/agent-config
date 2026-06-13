@@ -1,0 +1,6 @@
+name: unvalley-agent-config
+version: 0.1.0
+description: unvalley's portable AI agent configuration - skills and rules following the agentskills.io standard, distributable via APM, skills.sh, and gh skill.
+metadata:
+  author: unvalley
+  homepage: https://github.com/unvalley/agent-config
