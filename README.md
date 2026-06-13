@@ -1,9 +1,6 @@
 # agent-config
 
-unvalley's portable AI agent configuration — reusable **skills** and **rules**
-for AI coding agents, following the [agentskills.io](https://agentskills.io)
-open standard. One repo, three distribution channels: **APM**, **skills.sh**,
-and **gh skill**.
+@unvalley portable AI agent configuration.
 
 ## Install
 
@@ -41,15 +38,6 @@ npx skills add unvalley/agent-config
 ```sh
 gh skill install unvalley/agent-config/skills/design-review
 ```
-
-## Skills
-
-| Skill | Use for |
-| --- | --- |
-| `rust-review` | Idiomatic Rust review — ownership, error handling, clippy, `unsafe` soundness, performance |
-| `ts-review` | Strict TypeScript / Node.js review — type safety, async correctness, module hygiene |
-| `design-review` | UI/UX critique — visual hierarchy, spacing, typography, accessibility, interaction polish |
-| `conventional-commits` | Conventional Commit messages and PR descriptions |
 
 ## Rules
 
