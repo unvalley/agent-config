@@ -2,7 +2,40 @@
 
 @unvalley portable AI agent configuration.
 
-## Install
+## Contents
+
+```
+skills/        agentskills.io SKILL.md per dir (rust/ts/design review, commits)
+agents/        Claude Code subagents (code-reviewer, planner)
+commands/      Claude Code slash commands (/commit, /review, /plan)
+rules/         always-on behavior (coding style, git, communication)
+src/           Rust installer CLI
+AGENTS.md      entry point for any AGENTS.md-aware agent (read natively by Codex)
+```
+
+## Apply to this machine
+
+A small Rust CLI symlinks the assets into local agent dirs, so repo edits are
+picked up live. Claude gets `skills/` + `agents/` + `commands/`; Codex gets
+`skills/` (and reads `AGENTS.md` natively).
+
+```sh
+cargo run -- install              # symlink into ~/.claude/{skills,agents,commands}
+cargo run -- install -t all       # claude + codex
+cargo run -- status               # show what's installed where
+cargo run -- uninstall            # remove the links
+
+cargo install --path .            # then: agent-config install
+```
+
+Flags: `--copy` (copy instead of symlink), `--force` (replace existing),
+`--dry-run`. The repo path is baked in at build time, so the command works from
+any directory.
+
+Codex's own config (`~/.codex/config.toml`) lives in dotfiles (chezmoi), not
+here; this repo only supplies its skills.
+
+## Install (distribution)
 
 ### APM ([microsoft/apm](https://github.com/microsoft/apm))
 
@@ -38,6 +71,9 @@ npx skills add unvalley/agent-config
 ```sh
 gh skill install unvalley/agent-config/skills/design-review
 ```
+
+> `agents/` and `commands/` are Claude Code-only and aren't covered by the three
+> skill channels above. Install them with the Rust CLI (`agent-config install`).
 
 ## Rules
 

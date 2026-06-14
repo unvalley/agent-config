@@ -28,4 +28,24 @@ activated when a task matches its description.
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
 | [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
 
+## Subagents
+
+Specialized workers in [`agents/`](agents/) (Claude Code), each with its own
+context window. Read-only by design.
+
+| Agent | Use for |
+| --- | --- |
+| [`code-reviewer`](agents/code-reviewer.md) | Reviews a diff/PR/files for bugs, security, idiom; returns findings by severity |
+| [`planner`](agents/planner.md) | Investigates the codebase and returns a step-by-step implementation plan |
+
+## Commands
+
+Slash commands in [`commands/`](commands/) (Claude Code).
+
+| Command | Use for |
+| --- | --- |
+| `/commit` | Review the staged diff and create a Conventional Commit (manual-only) |
+| `/review` | Review the current diff or given files |
+| `/plan` | Produce an implementation plan before coding |
+
 See [README.md](README.md) for installation and distribution.

@@ -1,0 +1,16 @@
+[package]
+name = "agent-config"
+version = "0.1.0"
+edition = "2021"
+description = "Install unvalley's agent skills into local AI agent directories"
+publish = false
+
+[dependencies]
+bpaf = { version = "0.9.26", features = ["derive"] }
+
+[[bin]]
+name = "agent-config"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"
