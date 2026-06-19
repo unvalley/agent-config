@@ -7,9 +7,21 @@ cli := "cargo run --quiet --"
 _default:
     @just --list
 
-# Link assets into every agent's dirs (target: all | claude | codex).
-install target="all":
+# Link own assets (target: all | claude | codex), then third-party skills.
+install target="all": (_own target) third-party
+
+_own target="all":
     {{cli}} install -t {{target}}
+
+# Install third-party skills declared in third-party-skills.txt (skills.sh).
+third-party:
+    #!/usr/bin/env bash
+    set -euf -o pipefail
+    while IFS= read -r line; do
+        line="${line%%#*}"
+        [ -z "${line// /}" ] && continue
+        npx -y skills add $line -g -a claude-code -a codex -a github-copilot -y
+    done < third-party-skills.txt
 
 # Show what's installed where (target: all | claude | codex).
 status target="all":

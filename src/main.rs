@@ -112,12 +112,23 @@ impl Target {
         }
     }
 
+    /// Directory where `kind`'s items are installed for this agent.
+    fn install_dir(self, kind: AssetKind, home: &Path) -> PathBuf {
+        match (self, kind) {
+            // Codex discovers user skills from ~/.agents/skills (shared with
+            // skills.sh), not ~/.codex/skills. See developers.openai.com/codex/skills.
+            (Target::Codex, AssetKind::Skills) => home.join(".agents").join("skills"),
+            _ => self.base_dir(home).join(kind.dir()),
+        }
+    }
+
     /// Asset kinds this agent understands.
     fn kinds(self) -> &'static [AssetKind] {
         match self {
             // Claude Code reads skills, subagents, and slash commands.
             Target::Claude => &[AssetKind::Skills, AssetKind::Agents, AssetKind::Commands],
-            // Codex consumes skills; AGENTS.md is read natively from the repo.
+            // Codex consumes skills (from ~/.agents/skills) and reads AGENTS.md
+            // per-project, so only skills are installed globally.
             Target::Codex => &[AssetKind::Skills],
         }
     }
@@ -218,7 +229,7 @@ fn install(target: TargetArg, copy: bool, force: bool, dry_run: bool) -> Result<
             if items.is_empty() {
                 continue;
             }
-            let dir = target.base_dir(&home).join(kind.dir());
+            let dir = target.install_dir(kind, &home);
             println!("\n[{}] {} -> {}", target.label(), kind.dir(), dir.display());
             if !dry_run {
                 fs::create_dir_all(&dir).map_err(|e| format!("mkdir {}: {e}", dir.display()))?;
@@ -276,7 +287,7 @@ fn uninstall(target: TargetArg, force: bool, dry_run: bool) -> Result<(), String
             if names.is_empty() {
                 continue;
             }
-            let dir = target.base_dir(&home).join(kind.dir());
+            let dir = target.install_dir(kind, &home);
             println!("\n[{}] {} {}", target.label(), kind.dir(), dir.display());
             for name in &names {
                 let dst = dir.join(name);
@@ -311,7 +322,7 @@ fn status(target: TargetArg) -> Result<(), String> {
             if items.is_empty() {
                 continue;
             }
-            let dir = target.base_dir(&home).join(kind.dir());
+            let dir = target.install_dir(kind, &home);
             println!("\n[{}] {} {}", target.label(), kind.dir(), dir.display());
             for (name, _) in &items {
                 let dst = dir.join(name);

@@ -15,17 +15,27 @@ AGENTS.md      entry point for any AGENTS.md-aware agent (read natively by Codex
 
 ## Apply to this machine
 
-A small Rust CLI symlinks the assets into local agent dirs, so repo edits are
-picked up live. Claude gets `skills/` + `agents/` + `commands/`; Codex gets
-`skills/` (and reads `AGENTS.md` natively).
+The simplest path is `just install`, which links this repo's own assets **and**
+installs the third-party skills declared in `third-party-skills.txt`:
 
 ```sh
-cargo run -- install              # symlink into ~/.claude/{skills,agents,commands}
+just install              # own assets (all agents) + third-party skills
+just install claude       # own assets for one agent (all | claude | codex)
+just status               # show what's installed where
+just uninstall            # remove this repo's links
+just third-party          # (re)install only the third-party skills
+```
+
+Under the hood a small Rust CLI symlinks the assets, so repo edits are picked up
+live. Claude gets `skills/` + `agents/` + `commands/` under `~/.claude`; Codex
+gets `skills/` under `~/.agents/skills` — the user-level directory Codex scans
+([docs](https://developers.openai.com/codex/skills)), shared with skills.sh.
+
+```sh
+cargo run -- install              # symlink own assets into ~/.claude (claude)
 cargo run -- install -t all       # claude + codex
 cargo run -- status               # show what's installed where
 cargo run -- uninstall            # remove the links
-
-cargo install --path .            # then: agent-config install
 ```
 
 Flags: `--copy` (copy instead of symlink), `--force` (replace existing),
@@ -33,7 +43,8 @@ Flags: `--copy` (copy instead of symlink), `--force` (replace existing),
 any directory.
 
 Codex's own config (`~/.codex/config.toml`) lives in dotfiles (chezmoi), not
-here; this repo only supplies its skills.
+here. Codex reads `AGENTS.md` per-project (not installed globally) and skills
+from `~/.agents/skills`.
 
 ## New machine setup (full)
 
@@ -44,41 +55,46 @@ Reproduce the whole agent setup on a fresh machine:
 #    skills.sh lock at ~/.agents/.skill-lock.json
 chezmoi init --apply unvalley
 
-# 2. own skills + agents + commands: clone this repo and link them live
+# 2. everything else: clone this repo, then one command links own assets
+#    (~/.claude + ~/.agents/skills) and installs third-party skills
 git clone https://github.com/unvalley/agent-config.git
 cd agent-config
-cargo install --path .            # builds the `agent-config` binary
-agent-config install -t all       # symlink into ~/.claude{,/agents,/commands} + ~/.codex
-
-# 3. third-party skills: restore from the lock applied in step 1
-npx skills experimental_install   # experimental; restores from the lock
-# fallback: re-add each `source` listed in ~/.agents/.skill-lock.json, e.g.
-#   npx skills add vercel-labs/agent-skills -g
+just install                      # own assets (all agents) + third-party skills
 ```
+
+`just install` runs the Rust installer for own assets and `npx skills add` for
+each line in `third-party-skills.txt`. The skills.sh lock at
+`~/.agents/.skill-lock.json` (restored by chezmoi in step 1) just pins the
+resolved versions.
 
 ## Managing skills
 
-Two tracks coexist in `~/.claude/skills` and never collide: own skills are
-symlinks into this repo; third-party skills are symlinks into `~/.agents/skills`
-(skills.sh). `agent-config` only ever touches its own links.
+Two tracks coexist and never collide: own skills are symlinks into this repo;
+third-party skills come from skills.sh. `agent-config` only ever touches its own
+links. Where they land depends on the agent:
+
+- **Claude** reads `~/.claude/skills` (own + third-party symlinked there).
+- **Codex** reads `~/.agents/skills` (own symlinked there by `agent-config`,
+  third-party stored there by skills.sh).
 
 Own skills (source of truth = this git repo):
 
 ```sh
 # add: create skills/<name>/SKILL.md (see "Authoring a new skill"), then
-agent-config install              # link it into ~/.claude/skills
+just install                      # link into ~/.claude/skills + ~/.agents/skills
 agent-config status               # what this repo has linked, and where
-agent-config uninstall            # remove only this repo's links
+agent-config uninstall -t all     # remove only this repo's links
 npx skills validate ./skills/<name>   # check against the agentskills.io spec
 ```
 
-Third-party skills (skills.sh, stored under `~/.agents/skills`):
+Third-party skills are declared in `third-party-skills.txt` (one source per
+line) — the source of truth for *which* skills to install. Edit it, then:
 
 ```sh
-npx skills add <owner>/<repo> -g  # install globally + symlink into agent dirs
+just third-party                  # install everything in third-party-skills.txt
 npx skills list -g                # list installed
 npx skills update -g              # update to latest
-npx skills remove <name>          # uninstall
+npx skills remove <name>          # uninstall (also drop its line from the file)
 chezmoi add ~/.agents/.skill-lock.json   # re-track the lock after any change
 ```
 
