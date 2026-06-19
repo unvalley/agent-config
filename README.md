@@ -16,14 +16,14 @@ AGENTS.md      entry point for any AGENTS.md-aware agent (read natively by Codex
 ## Apply to this machine
 
 The simplest path is `just install`, which links this repo's own assets **and**
-installs the third-party skills declared in `third-party-skills.txt`:
+restores the third-party skills recorded in the skills.sh lock:
 
 ```sh
 just install              # own assets (all agents) + third-party skills
 just install claude       # own assets for one agent (all | claude | codex)
 just status               # show what's installed where
 just uninstall            # remove this repo's links
-just third-party          # (re)install only the third-party skills
+just third-party          # restore third-party skills from ~/.agents/.skill-lock.json
 ```
 
 Under the hood a small Rust CLI symlinks the assets, so repo edits are picked up
@@ -62,10 +62,10 @@ cd agent-config
 just install                      # own assets (all agents) + third-party skills
 ```
 
-`just install` runs the Rust installer for own assets and `npx skills add` for
-each line in `third-party-skills.txt`. The skills.sh lock at
-`~/.agents/.skill-lock.json` (restored by chezmoi in step 1) just pins the
-resolved versions.
+`just install` runs the Rust installer for own assets, then `just third-party`,
+which reads the skills.sh lock at `~/.agents/.skill-lock.json` (restored by
+chezmoi in step 1) and re-runs `npx skills add -g` for each source. skills.sh has
+no global restore-from-lock command, so this small loop is the bridge.
 
 ## Managing skills
 
@@ -84,19 +84,24 @@ Own skills (source of truth = this git repo):
 just install                      # link into ~/.claude/skills + ~/.agents/skills
 agent-config status               # what this repo has linked, and where
 agent-config uninstall -t all     # remove only this repo's links
-npx skills validate ./skills/<name>   # check against the agentskills.io spec
+npx skills-ref validate ./skills/<name>  # check against the agentskills.io spec
 ```
 
-Third-party skills are declared in `third-party-skills.txt` (one source per
-line) — the source of truth for *which* skills to install. Edit it, then:
+Third-party skills are managed entirely by skills.sh — its global lock
+`~/.agents/.skill-lock.json` (tracked by chezmoi) is the source of truth. This
+repo declares no separate list; manage them natively:
 
 ```sh
-just third-party                  # install everything in third-party-skills.txt
+npx skills add <owner>/<repo> -g  # add a skill (and -s <name> to pick skills)
+npx skills remove <name>          # remove one
 npx skills list -g                # list installed
 npx skills update -g              # update to latest
-npx skills remove <name>          # uninstall (also drop its line from the file)
 chezmoi add ~/.agents/.skill-lock.json   # re-track the lock after any change
+just third-party                  # restore the whole lock onto a machine
 ```
+
+`just third-party` exists only because skills.sh has no global restore-from-lock
+command; it reads the lock and re-runs `npx skills add -g` per source.
 
 Tell own from third-party at a glance:
 
@@ -161,5 +166,5 @@ instructions always override these defaults.
 3. Keep `SKILL.md` under ~500 lines; move detail into `references/`, code into
    `scripts/`, templates into `assets/`.
 4. Keep frontmatter values ASCII-only (APM validation requirement).
-5. Validate: `npx skills validate ./skills/<name>` or the agentskills `skills-ref`
-   tool.
+5. Validate with the agentskills reference tool: `npx skills-ref validate
+   ./skills/<name>` (or `just validate <name>`).
