@@ -24,6 +24,7 @@ activated when a task matches its description.
 | Skill | Use for |
 | --- | --- |
 | [`rust-review`](skills/rust-review/SKILL.md) | Idiomatic Rust review: ownership, errors, clippy, unsafe, perf |
+| [`rust-performance`](skills/rust-performance/SKILL.md) | Rust speed: allocations, CompactString, arenas, FxHashMap, layout, inlining |
 | [`ts-review`](skills/ts-review/SKILL.md) | Strict TypeScript / Node.js review: types, async, modules |
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
 | [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
