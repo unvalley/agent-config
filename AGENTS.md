@@ -4,10 +4,6 @@ unvalley's portable AI agent configuration: skills and rules for AI coding
 agents (Claude Code, Copilot, Cursor, Codex, and any agent that supports the
 [agentskills.io](https://agentskills.io) standard).
 
-## Stack
-
-Senior software engineer and designer. Primary stack: Rust, TypeScript, Node.js.
-
 ## Rules
 
 Always-on behavior rules. Project-specific instructions override these.
