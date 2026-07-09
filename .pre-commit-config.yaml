@@ -1,0 +1,7 @@
+# Pre-commit hooks (run via prek: https://github.com/j178/prek)
+# Secret scanning with gitleaks: https://github.com/gitleaks/gitleaks
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

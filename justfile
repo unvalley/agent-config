@@ -7,8 +7,8 @@ cli := "cargo run --quiet --"
 _default:
     @just --list
 
-# Link own assets (target: all | claude | codex), then third-party skills.
-install target="all": (_own target) third-party
+# Link own assets (target: all | claude | codex), third-party skills, then git hooks.
+install target="all": (_own target) third-party hooks
 
 _own target="all":
     {{cli}} install -t {{target}}
@@ -24,6 +24,14 @@ third-party:
     | while IFS= read -r line; do
         npx -y skills add $line -g -a claude-code -a codex -a github-copilot -y
     done
+
+# Install git pre-commit hooks (prek + gitleaks secret scanning).
+hooks:
+    #!/usr/bin/env bash
+    set -euf -o pipefail
+    command -v prek >/dev/null 2>&1 || brew install prek
+    command -v gitleaks >/dev/null 2>&1 || brew install gitleaks
+    prek install
 
 # Show what's installed where (target: all | claude | codex).
 status target="all":
