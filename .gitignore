@@ -1,1 +1,6 @@
 /target
+
+# Local skills-install artifacts (`npx skills add`); this repo distributes via
+# skills/ + the global skills.sh lock, not these.
+/.agents/
+/skills-lock.json
