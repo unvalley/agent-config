@@ -1,0 +1,4 @@
+interface:
+  display_name: "CI Fix"
+  short_description: "Diagnose and fix failing GitHub Actions checks"
+  default_prompt: "Use $ci-fix to diagnose this failing GitHub Actions check and fix it if requested."

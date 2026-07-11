@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Performance"
+  short_description: "Measure and optimize Rust runtime performance"
+  default_prompt: "Use $rust-performance to profile this Rust hot path and verify a measurable improvement."

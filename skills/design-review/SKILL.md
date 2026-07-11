@@ -1,10 +1,6 @@
 ---
 name: design-review
-description: Critique UI and UX for visual hierarchy, layout, spacing, typography, color, accessibility, and interaction polish. Use when reviewing interfaces, components, mockups, CSS, or Tailwind, or when the user mentions design, UI, UX, accessibility, a11y, or visual polish.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Review UI and UX for visual hierarchy, layout, spacing, typography, color, accessibility, interaction states, and content clarity. Use when the user asks for a design critique, UI or UX review, accessibility audit, visual-polish assessment, or feedback on an interface, component, mockup, CSS, or Tailwind implementation.
 ---
 
 # Design Review
@@ -20,6 +16,7 @@ Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
 2. Evaluate at multiple breakpoints (mobile + desktop) and in both light/dark if
    themed.
 3. Group findings: accessibility/correctness > hierarchy/clarity > polish.
+4. Keep the worktree read-only unless the user also asks to implement the fixes.
 
 ## What to check
 

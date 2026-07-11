@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Review"
+  short_description: "Review UI, UX, accessibility, and visual polish"
+  default_prompt: "Use $design-review to critique this interface and prioritize concrete design fixes."

@@ -1,10 +1,6 @@
 ---
 name: ts-review
-description: Review TypeScript and Node.js code for type safety, async correctness, error handling, and module hygiene. Use when reviewing or writing TypeScript, JavaScript, or Node.js code, or when the user mentions TypeScript, Node, ESM, tsconfig, types, or any.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Review TypeScript, JavaScript, or Node.js code for type safety, async correctness, error handling, boundary validation, and module hygiene. Use when the user asks to review, audit, or assess a TypeScript or Node.js diff, pull request, API, tsconfig, ESM setup, unsafe casts, any usage, or promise handling.
 ---
 
 # TypeScript / Node.js Review

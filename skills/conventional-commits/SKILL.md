@@ -1,10 +1,6 @@
 ---
 name: conventional-commits
-description: Write Conventional Commit messages and pull request descriptions. Use when committing changes, writing or fixing commit messages, or drafting PR titles and descriptions, or when the user mentions commits, czg, conventional commits, or changelog.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Write and review Conventional Commit messages and pull request titles or descriptions from the actual diff. Use when the user asks to commit changes, draft or fix a commit message, prepare PR copy, follow Conventional Commits, use czg, or produce changelog-friendly history.
 ---
 
 # Conventional Commits

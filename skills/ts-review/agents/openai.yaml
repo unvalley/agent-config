@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript Review"
+  short_description: "Review TypeScript safety, async code, and modules"
+  default_prompt: "Use $ts-review to review this TypeScript change and report actionable findings by severity."

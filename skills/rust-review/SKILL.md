@@ -1,10 +1,6 @@
 ---
 name: rust-review
-description: Review Rust code for idiomatic style, ownership and borrowing correctness, error handling, clippy lints, unsafe soundness, and performance. Use when reviewing or writing Rust, or when the user mentions Rust, cargo, clippy, ownership, lifetimes, traits, async, or crate API design.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Review Rust code for correctness, ownership and borrowing, error handling, API design, async behavior, unsafe soundness, idiom, and performance risks. Use when the user asks to review, audit, or assess Rust code, a Rust diff or pull request, a crate API, clippy findings, unsafe code, lifetimes, traits, or async Rust.
 ---
 
 # Rust Review

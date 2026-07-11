@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swift Review"
+  short_description: "Review Swift correctness, concurrency, and idiom"
+  default_prompt: "Use $swift-review to review this Swift change and report actionable findings by severity."

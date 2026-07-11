@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conventional Commits"
+  short_description: "Draft accurate Conventional Commit and PR copy"
+  default_prompt: "Use $conventional-commits to draft a commit message or pull request description from the actual diff."

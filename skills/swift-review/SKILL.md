@@ -1,10 +1,6 @@
 ---
 name: swift-review
-description: Review Swift, SwiftUI, and AppKit code for memory safety, concurrency correctness, main-thread discipline, and native macOS/iOS idiom. Use when reviewing or writing Swift, or when the user mentions Swift, SwiftUI, AppKit, UIKit, Xcode, xcodebuild, actors, or Combine.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Review Swift, SwiftUI, AppKit, or UIKit code for correctness, memory ownership, concurrency, main-thread discipline, state management, platform idiom, and performance risks. Use when the user asks to review, audit, or assess Swift code, a Swift diff or pull request, actors, Combine, SwiftUI state, AppKit behavior, or Xcode warnings.
 ---
 
 # Swift / AppKit / SwiftUI Review

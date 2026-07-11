@@ -1,16 +1,13 @@
 ---
 name: ci-fix
-description: Triage and fix failing GitHub PR checks that run on GitHub Actions. Use when CI is red, a PR check fails, or the user mentions CI failed, GitHub Actions, gh pr checks, workflow runs, or fixing the build on a PR.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Diagnose or fix failing GitHub pull request checks that run on GitHub Actions. Use when the user asks to investigate red CI, inspect a failed PR check or workflow run, explain a GitHub Actions failure, or implement and verify a CI fix.
 ---
 
 # CI Fix (GitHub Actions)
 
 Locate failing PR checks with `gh`, read the actual logs, identify the root
-cause with evidence, then fix. Never guess from the check name alone.
+cause with evidence, then fix when requested. Never guess from the check name
+alone.
 
 ## Workflow
 
@@ -31,9 +28,11 @@ cause with evidence, then fix. Never guess from the check name alone.
    cause, and distinguish real code failures from infrastructure ones
    (billing/spending limits, runner outages, flaky network). Infrastructure
    failures are reported, not "fixed" with code churn.
-6. **Reproduce locally** when feasible (run the same test/lint command) so the
+6. **Respect the requested scope**: if the user asked only for diagnosis,
+   report the evidence and stop before editing, pushing, or rerunning jobs.
+7. **Reproduce locally** when feasible (run the same test/lint command) so the
    fix is verified before pushing.
-7. **Fix, then confirm**: apply the fix, push, and re-check with
+8. **Fix, then confirm** when explicitly requested: apply the fix, push, and re-check with
    `gh pr checks <pr> --watch` or a fresh `gh pr checks`.
 
 ## Reporting

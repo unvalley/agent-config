@@ -127,9 +127,12 @@ Or declare them in a project's `apm.yml`:
 dependencies:
   apm:
     - unvalley/agent-config/skills/rust-review
+    - unvalley/agent-config/skills/rust-performance
     - unvalley/agent-config/skills/ts-review
+    - unvalley/agent-config/skills/swift-review
     - unvalley/agent-config/skills/design-review
     - unvalley/agent-config/skills/conventional-commits
+    - unvalley/agent-config/skills/ci-fix
 ```
 
 Then `apm install`.
@@ -159,12 +162,16 @@ instructions always override these defaults.
 
 ## Authoring a new skill
 
-1. `mkdir -p skills/<name>` (lowercase, hyphens, no leading/trailing/consecutive
-   hyphens, ≤ 64 chars).
-2. Add `skills/<name>/SKILL.md` with frontmatter `name` (matching the dir) and a
-   `description` that states **what** it does and **when** to use it.
-3. Keep `SKILL.md` under ~500 lines; move detail into `references/`, code into
-   `scripts/`, templates into `assets/`.
-4. Keep frontmatter values ASCII-only (APM validation requirement).
-5. Validate with the agentskills reference tool: `npx skills-ref validate
+1. Create `skills/<name>/` with a lowercase, hyphenated name (no
+   leading/trailing/consecutive hyphens, ≤ 64 chars). Use the active agent's
+   skill scaffolder when available.
+2. Add `SKILL.md` with only `name` (matching the directory) and `description`
+   in frontmatter. The description must state both **what** the skill does and
+   **when** it should trigger.
+3. Add `agents/openai.yaml` with quoted `display_name`, `short_description`, and
+   a `default_prompt` that explicitly invokes `$<name>`.
+4. Keep `SKILL.md` under ~500 lines; move optional detail into `references/`,
+   deterministic code into `scripts/`, and output resources into `assets/`.
+5. Keep frontmatter values ASCII-only (APM validation requirement).
+6. Validate with the agentskills reference tool: `npx skills-ref validate
    ./skills/<name>` (or `just validate <name>`).

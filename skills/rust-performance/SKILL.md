@@ -1,10 +1,6 @@
 ---
 name: rust-performance
-description: Optimize and review Rust for runtime performance - cutting allocations, fast string types (CompactString, Cow, interning), arena/bump allocation, FxHashMap hashing, small enum layout, inlining, iterator and build-profile tuning. Use when writing or optimizing hot Rust paths, profiling with flamegraph or criterion, or when the user mentions performance, latency, throughput, allocations, CompactString, compact_str, arena, bumpalo, FxHashMap, SmallVec, or making Rust faster.
-license: MIT
-metadata:
-  author: unvalley
-  version: "0.1.0"
+description: Measure, optimize, and review Rust runtime performance, including allocations, strings, hashing, type layout, dispatch, iteration, and build profiles. Use when the user asks to profile or speed up Rust, reduce latency or allocations, benchmark a hot path, or mentions flamegraph, criterion, CompactString, Cow, interning, bumpalo, FxHashMap, SmallVec, or throughput.
 ---
 
 # Rust Performance
