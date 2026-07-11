@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: Review UI and UX for visual hierarchy, layout, spacing, typography, color, accessibility, interaction states, and content clarity. Use when the user asks for a design critique, UI or UX review, accessibility audit, visual-polish assessment, or feedback on an interface, component, mockup, CSS, or Tailwind implementation.
+description: Review and guide UI and UX for visual hierarchy, layout, spacing, typography, color, accessibility, interaction states, and content clarity. Use when the user asks for a design critique, UI or UX review, landing-page or interface design guidance, accessibility audit, visual-polish assessment, or feedback on a component, mockup, CSS, or Tailwind implementation.
 ---
 
 # Design Review
@@ -58,6 +58,14 @@ Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
 ### Content
 - Microcopy is concise and human. Buttons name the action ("Save changes", not
   "Submit"). Error messages explain what happened and what to do.
+
+### Section labels
+- Do not add decorative eyebrow or kicker labels above every section heading.
+  They repeat the heading and make the page feel template-driven.
+- Remove labels such as "Features", "Pricing", "Explore", or uppercase slogans
+  when the heading already identifies the section.
+- Keep a label only when it adds unique status or category information, such as
+  "Beta", "Missing since 1969", or "Early price".
 
 ## Output format
 
