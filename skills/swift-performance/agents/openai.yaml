@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swift Performance"
+  short_description: "Measure and optimize Swift application performance"
+  default_prompt: "Use $swift-performance to measure this Swift performance problem and verify an improvement."

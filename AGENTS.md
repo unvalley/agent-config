@@ -25,6 +25,9 @@ activated when a task matches its description.
 | [`rust-performance`](skills/rust-performance/SKILL.md) | Rust speed: allocations, CompactString, arenas, FxHashMap, layout, inlining |
 | [`ts-review`](skills/ts-review/SKILL.md) | Strict TypeScript / Node.js review: types, async, modules |
 | [`swift-review`](skills/swift-review/SKILL.md) | Swift / SwiftUI / AppKit review: memory, concurrency, main-thread, idiom |
+| [`swift-performance`](skills/swift-performance/SKILL.md) | Measured Swift / SwiftUI / AppKit performance work with Instruments and benchmarks |
+| [`local-first-filesystem`](skills/local-first-filesystem/SKILL.md) | Conflict-safe filesystem persistence, external changes, watchers, rebuildable indexes |
+| [`release-engineering`](skills/release-engineering/SKILL.md) | Reproducible release preparation, packaging, signing, publication, and verification |
 | [`ci-fix`](skills/ci-fix/SKILL.md) | Triage and fix failing GitHub Actions PR checks via `gh` |
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
 | [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |

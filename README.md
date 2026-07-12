@@ -5,7 +5,7 @@
 ## Contents
 
 ```
-skills/        agentskills.io SKILL.md per dir (rust/ts/design review, commits)
+skills/        agentskills.io skills for review, performance, releases, and workflows
 agents/        Claude Code subagents (code-reviewer, planner)
 commands/      Claude Code slash commands (/commit, /review, /plan)
 rules/         always-on behavior (coding style, git, communication)
@@ -130,6 +130,9 @@ dependencies:
     - unvalley/agent-config/skills/rust-performance
     - unvalley/agent-config/skills/ts-review
     - unvalley/agent-config/skills/swift-review
+    - unvalley/agent-config/skills/swift-performance
+    - unvalley/agent-config/skills/local-first-filesystem
+    - unvalley/agent-config/skills/release-engineering
     - unvalley/agent-config/skills/design-review
     - unvalley/agent-config/skills/conventional-commits
     - unvalley/agent-config/skills/ci-fix

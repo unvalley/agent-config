@@ -1,0 +1,4 @@
+interface:
+  display_name: "Local-First Filesystem"
+  short_description: "Design safe local-first filesystem persistence"
+  default_prompt: "Use $local-first-filesystem to design a conflict-safe file persistence workflow."

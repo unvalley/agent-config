@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Engineering"
+  short_description: "Prepare and verify reproducible software releases"
+  default_prompt: "Use $release-engineering to prepare and verify this software release."
