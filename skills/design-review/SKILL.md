@@ -5,16 +5,14 @@ description: Review and guide UI and UX for visual hierarchy, layout, spacing, t
 
 # Design Review
 
-Critique like a senior product designer who also ships code. Be opinionated and
-specific. Tie every note to a principle and a concrete fix, not taste alone.
+Review like a senior product designer who also ships code.
+Be opinionated and specific. Tie every note to a principle and a concrete fix, not taste alone.
 Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
 
 ## Workflow
 
-1. If there is a running UI, look at it (screenshot or browser) before reading
-   code. Judge what the user sees first.
-2. Evaluate at multiple breakpoints (mobile + desktop) and in both light/dark if
-   themed.
+1. If there is a running UI, look at it (screenshot or browser) before reading code. Judge what the user sees first.
+2. Evaluate at multiple breakpoints (mobile + desktop) and in both light/dark if themed.
 3. Group findings: accessibility/correctness > hierarchy/clarity > polish.
 4. Keep the worktree read-only unless the user also asks to implement the fixes.
 
@@ -32,9 +30,8 @@ Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
   (~60-75ch for body text).
 
 ### Typography
-- A small, deliberate type scale. Limit families and weights.
-- Line-height ~1.4-1.6 for body; tighter for headings. Sufficient contrast
-  between heading and body sizes.
+- A small, deliberate type scale. Limit families and weights, normal and light weights are enough in most cases.
+- Line-height ~1.4-1.6 for body; tighter for headings. Sufficient contrast between heading and body sizes.
 
 ### Color & contrast
 - Color choices come from tokens, not one-off hex. Semantic colors (success,
@@ -59,13 +56,27 @@ Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
 - Microcopy is concise and human. Buttons name the action ("Save changes", not
   "Submit"). Error messages explain what happened and what to do.
 
-### Section labels
-- Do not add decorative eyebrow or kicker labels above every section heading.
-  They repeat the heading and make the page feel template-driven.
-- Remove labels such as "Features", "Pricing", "Explore", or uppercase slogans
-  when the heading already identifies the section.
-- Keep a label only when it adds unique status or category information, such as
-  "Beta", "Missing since 1969", or "Early price".
+### Eyebrow and kicker labels (prohibited)
+- Never place a small label, eyebrow, kicker, supertitle, category, or uppercase
+  slogan above a hero or section heading. These labels make interfaces feel
+  template-driven and weaken the heading hierarchy.
+- Remove existing labels such as "AI DEVELOPMENT PARTNER", "Features",
+  "Pricing", "Explore", or status/category copy instead of renaming or
+  rewriting them.
+- Put essential category or status information in the heading, body copy,
+  navigation, breadcrumb, or an in-content status badge. Do not preserve it as
+  text above the heading.
+
+### Generic marketing callout cards (prohibited)
+- Never wrap a CTA, contact prompt, summary, or process in a large tinted card
+  with oversized rounded corners. Do not use the common generated-LP
+  composition of padded color panel, internal divider, checklist, pill CTA,
+  and decorative bottom stripe or progress-like segments.
+- Do not repair this pattern by changing its color, radius, shadow, gradient, or
+  copy. Remove the card treatment and flatten the content into the page flow.
+- Use whitespace and a simple top or bottom border to separate the section.
+  Keep the heading, concise body copy, and one action; omit promotional
+  checklists and purely decorative bars.
 
 ## Output format
 
