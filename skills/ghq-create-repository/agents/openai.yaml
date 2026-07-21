@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create ghq Repository"
+  short_description: "Create GitHub repositories in the local ghq tree"
+  default_prompt: "Use $ghq-create-repository to create a private GitHub repository and clone it into my local ghq tree."

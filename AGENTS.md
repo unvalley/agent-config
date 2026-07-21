@@ -31,6 +31,7 @@ activated when a task matches its description.
 | [`ci-fix`](skills/ci-fix/SKILL.md) | Triage and fix failing GitHub Actions PR checks via `gh` |
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
 | [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
+| [`ghq-create-repository`](skills/ghq-create-repository/SKILL.md) | Create GitHub repositories in the canonical local ghq tree |
 
 ## Subagents
 
