@@ -44,3 +44,29 @@ uninstall target="all":
 # Validate a skill against the agentskills.io spec, e.g. `just validate rust-review`.
 validate skill:
     npx skills-ref validate ./skills/{{skill}}
+
+# Validate an AI-native task contract against the shared schema.
+validate-task task="docs/ai-native/examples/ci-fix-task.json":
+    npx -y ajv-cli@5 validate --spec=draft2020 \
+        -s docs/ai-native/task-contract.schema.json \
+        -d {{task}}
+
+# Prove that the task schema accepts the example and rejects unsafe policies.
+test-task-schema:
+    #!/usr/bin/env bash
+    set -euf -o pipefail
+    schema="docs/ai-native/task-contract.schema.json"
+    validate() {
+        npx -y ajv-cli@5 validate --spec=draft2020 -s "$schema" -d "$1"
+    }
+
+    validate "docs/ai-native/examples/ci-fix-task.json"
+
+    for invalid in docs/ai-native/tests/*.invalid.json; do
+        if validate "$invalid" >/dev/null 2>&1; then
+            echo "expected invalid task to be rejected: $invalid"
+            exit 1
+        fi
+    done
+
+    echo "task schema policy tests passed"

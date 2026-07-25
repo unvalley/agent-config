@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "task_id": "invalid-yellow-auto-merge",
+  "kind": "ci-fix",
+  "objective": "Demonstrate that yellow-risk work cannot request automatic merge.",
+  "source": {
+    "type": "manual",
+    "repository": "unvalley/agent-config",
+    "ref": "refs/heads/main"
+  },
+  "scope": {
+    "include": [
+      "**"
+    ],
+    "exclude": []
+  },
+  "risk": {
+    "level": "yellow",
+    "reasons": [
+      "The task may modify source code."
+    ]
+  },
+  "permissions": {
+    "workspace": "write",
+    "network": "write",
+    "external_write": "merge"
+  },
+  "verification": {
+    "checks": [
+      {
+        "name": "test",
+        "command": "cargo test",
+        "timeout_seconds": 900
+      }
+    ],
+    "required_evidence": [
+      "check-results"
+    ]
+  },
+  "delivery": {
+    "mode": "auto-merge",
+    "base_branch": "main"
+  },
+  "limits": {
+    "max_attempts": 1,
+    "max_minutes": 30,
+    "max_changed_files": 5
+  },
+  "stop_conditions": {
+    "success": [
+      "The declared checks pass."
+    ],
+    "stop": [
+      "The task exceeds its declared limits."
+    ]
+  }
+}

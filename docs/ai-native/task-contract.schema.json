@@ -1,0 +1,519 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/unvalley/agent-config/docs/ai-native/task-contract.schema.json",
+  "title": "AI-native task contract",
+  "description": "A bounded unit of agent work with explicit risk, permissions, verification, and delivery.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "kind",
+    "objective",
+    "source",
+    "scope",
+    "risk",
+    "permissions",
+    "verification",
+    "delivery",
+    "limits",
+    "stop_conditions"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+    },
+    "kind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "repository",
+        "ref"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "manual",
+            "github-check",
+            "github-issue",
+            "schedule"
+          ]
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[^/\\s]+/[^/\\s]+$"
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "include",
+        "exclude"
+      ],
+      "properties": {
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "reasons"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace",
+        "network",
+        "external_write"
+      ],
+      "properties": {
+        "workspace": {
+          "enum": [
+            "read",
+            "write"
+          ]
+        },
+        "network": {
+          "enum": [
+            "none",
+            "read",
+            "write"
+          ]
+        },
+        "external_write": {
+          "enum": [
+            "none",
+            "draft-pr",
+            "ready-pr",
+            "merge",
+            "deploy"
+          ]
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checks",
+        "required_evidence"
+      ],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "command",
+              "timeout_seconds"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{1,63}$"
+              },
+              "command": {
+                "type": "string",
+                "minLength": 1
+              },
+              "timeout_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 7200
+              }
+            }
+          }
+        },
+        "required_evidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "root-cause",
+              "changed-files",
+              "diff",
+              "check-results",
+              "verifier-report"
+            ]
+          }
+        }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "report",
+            "draft-pr",
+            "ready-pr",
+            "auto-merge"
+          ]
+        },
+        "base_branch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_attempts",
+        "max_minutes",
+        "max_changed_files"
+      ],
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "max_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 480
+        },
+        "max_changed_files": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "stop_conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "success",
+        "stop"
+      ],
+      "properties": {
+        "success": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "stop": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "risk": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "const": "red"
+              }
+            },
+            "required": [
+              "level"
+            ]
+          }
+        },
+        "required": [
+          "risk"
+        ]
+      },
+      "then": {
+        "properties": {
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "external_write": {
+                "const": "none"
+              }
+            }
+          },
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "report"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "report"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "delivery"
+        ]
+      },
+      "then": {
+        "properties": {
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "external_write": {
+                "const": "none"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "draft-pr"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "delivery"
+        ]
+      },
+      "then": {
+        "properties": {
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "external_write": {
+                "const": "draft-pr"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "ready-pr"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "delivery"
+        ]
+      },
+      "then": {
+        "properties": {
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "external_write": {
+                "const": "ready-pr"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "const": "auto-merge"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "delivery"
+        ]
+      },
+      "then": {
+        "properties": {
+          "risk": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "const": "green"
+              }
+            }
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "external_write": {
+                "const": "merge"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "enum": [
+                  "draft-pr",
+                  "ready-pr",
+                  "auto-merge"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "delivery"
+        ]
+      },
+      "then": {
+        "properties": {
+          "verification": {
+            "type": "object",
+            "properties": {
+              "required_evidence": {
+                "type": "array",
+                "contains": {
+                  "const": "verifier-report"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

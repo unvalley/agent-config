@@ -9,9 +9,13 @@ skills/        agentskills.io skills for review, performance, releases, and work
 agents/        Claude Code subagents (code-reviewer, planner)
 commands/      Claude Code slash commands (/commit, /review, /plan)
 rules/         always-on behavior (coding style, git, communication)
+docs/          architecture and adoption guides
 src/           Rust installer CLI
 AGENTS.md      entry point for any AGENTS.md-aware agent (read natively by Codex)
 ```
+
+The staged path toward closed-loop agent execution is documented in
+[`docs/ai-native/`](docs/ai-native/README.md).
 
 ## Apply to this machine
 
