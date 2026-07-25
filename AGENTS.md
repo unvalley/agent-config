@@ -30,6 +30,7 @@ activated when a task matches its description.
 | [`release-engineering`](skills/release-engineering/SKILL.md) | Reproducible release preparation, packaging, signing, publication, and verification |
 | [`ci-fix`](skills/ci-fix/SKILL.md) | Triage and fix failing GitHub Actions PR checks via `gh` |
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
+| [`english-writing`](skills/english-writing/SKILL.md) | Natural English rewrites that preserve facts, voice, citations, and links |
 | [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
 | [`ghq-create-repository`](skills/ghq-create-repository/SKILL.md) | Create GitHub repositories in the canonical local ghq tree |
 

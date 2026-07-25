@@ -134,6 +134,7 @@ dependencies:
     - unvalley/agent-config/skills/local-first-filesystem
     - unvalley/agent-config/skills/release-engineering
     - unvalley/agent-config/skills/design-review
+    - unvalley/agent-config/skills/english-writing
     - unvalley/agent-config/skills/conventional-commits
     - unvalley/agent-config/skills/ci-fix
     - unvalley/agent-config/skills/ghq-create-repository
