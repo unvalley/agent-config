@@ -11,7 +11,7 @@ and the error shown to the caller.
 | Partial temporary write | Fail after each possible chunk boundary | Never expose partial bytes at the canonical path; report failure. |
 | Flush or close fails | Fail after writing all bytes | Do not replace the canonical file or publish the proposed signature. |
 | Destination changes before replace | Modify bytes after the base read, including with the same size and timestamp | Preserve the external destination and write the proposal to a unique conflict copy. |
-| Atomic replace fails | Deny replacement or remove destination directory | Preserve the last canonical version when it still exists; report an unresolved commit. |
+| Atomic replace fails or returns an ambiguous result | Deny replacement, remove the destination directory, or report failure after replacement may have occurred | Re-read and re-sign the destination, preserve every observed version, and report an unresolved commit without blindly retrying. |
 | Crash around replacement | Terminate before and after each write, flush, replace, and directory sync | Recover either the complete old version or complete new version, never a partial canonical version. |
 | Disk becomes full | Exhaust space during write and metadata sync | Do not claim success; keep the prior canonical version readable. |
 | External rename | Rename while the document is clean and while it has local edits | Follow stable identity only when unambiguous; otherwise surface delete/create without losing local edits. |
@@ -41,4 +41,6 @@ and the error shown to the caller.
    convergence invariants after every step.
 
 Record platform, filesystem, provider, timestamp resolution, and case behavior
-with results. Do not generalize one platform's passing result to another.
+with results. Also record whether atomic replace and directory durability were
+verified. Do not generalize one platform's passing result to another or claim an
+old-or-new crash guarantee where the target primitives cannot provide it.

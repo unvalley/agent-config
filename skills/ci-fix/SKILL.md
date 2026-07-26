@@ -11,8 +11,9 @@ alone.
 
 ## Workflow
 
-1. **Auth**: `gh auth status`. If unauthenticated, ask the user to run
-   `gh auth login` (repo + workflow scopes).
+1. **Auth**: run `gh auth status`. If authentication or repository reads fail,
+   ask for the minimum access the CLI reports as missing. Do not request
+   workflow-editing permission merely to diagnose checks.
 2. **Resolve the PR**: current branch via `gh pr view --json number,url`, or
    the number/URL the user gave.
 3. **Inspect failing checks**:
@@ -24,8 +25,10 @@ alone.
        `gh api /repos/<owner>/<repo>/actions/jobs/<job_id>/logs`
 4. **Scope**: only GitHub Actions. External providers (Buildkite, etc.) —
    report the details URL and stop there.
-5. **Diagnose before editing**: quote the failing log snippet, state the root
-   cause, and distinguish real code failures from infrastructure ones
+5. **Diagnose before editing**: quote only the minimum redacted log snippet
+   needed to support the root cause. Never reproduce tokens, credentials,
+   private keys, signed URLs, or personal data that escaped log masking.
+   Distinguish real code failures from infrastructure ones
    (billing/spending limits, runner outages, flaky network). Infrastructure
    failures are reported, not "fixed" with code churn.
 6. **Respect the requested scope**: if the user asked only for diagnosis,
@@ -37,6 +40,7 @@ alone.
 
 ## Reporting
 
-For each failing check: name, run URL, a concise log snippet, root cause, and
-what was done. Call out missing or truncated logs explicitly. If checks are
-still red after the fix, say so — never report green without re-checking.
+For each failing check: name, run URL, a concise redacted log snippet, root
+cause, and what was done. Call out missing or truncated logs explicitly. If
+checks are still red after the fix, say so — never report green without
+re-checking.

@@ -6,30 +6,39 @@ description: Review Rust code for correctness, ownership and borrowing, error ha
 # Rust Review
 
 Review Rust with the standards of a senior Rust engineer. Prioritize correctness
-and soundness first, then idiom and clarity, then performance. Be specific: cite
-the file and line, name the rule, and show the fix.
+and soundness first, then maintainability, then measured performance risk. Audit
+and report by default; do not edit, commit, or push unless the user asks for a
+fix. Cite the file and line and explain the concrete failure mode.
 
 ## Workflow
 
-1. Run the toolchain before reading by eye. Trust the compiler and clippy.
-   - `cargo build` / `cargo check`
-   - `cargo clippy --all-targets --all-features -- -D warnings`
-   - `cargo fmt --check`
-   - `cargo test` (and `cargo nextest run` if configured)
-2. Read the public API surface first (`pub` items, trait bounds, return types),
-   then the implementation.
-3. Report findings grouped by severity: soundness > correctness > idiom > nits.
+1. Read repository guidance and resolve the review scope and comparison base.
+2. Discover and run the repository's documented checks that are relevant to the
+   scope. Use `cargo check`, `clippy`, `fmt --check`, tests, or `nextest` only
+   with the package, target, and feature set the repository supports.
+3. Read the public API surface first (`pub` items, trait bounds, return types),
+   then trace each suspected defect through the implementation and callers.
+4. Report only actionable findings supported by a reachable failure, violated
+   invariant, diagnostic, or concrete maintenance cost. Separate new issues from
+   pre-existing failures when the base revision is available.
+
+Do not infer a contract from names or style alone. If required behavior,
+reachability, lifetime, or caller expectations cannot be established, report
+the uncertainty as a question or residual risk rather than a finding.
 
 ## What to check
 
 ### Ownership & borrowing
 - Prefer borrowing (`&T`, `&str`, `&[T]`) over owned args unless ownership is needed.
 - Avoid needless `.clone()` and `.to_owned()`; flag clones in hot paths.
-- Take `impl AsRef<Path>` / `impl Into<String>` for ergonomic APIs where it fits.
+- Avoid unnecessary ownership transfers at API boundaries. Follow the
+  codebase's public-API conventions instead of adding generic conversion bounds
+  mechanically.
 - Watch for lifetimes that leak implementation details into the public API.
 
 ### Error handling
-- Libraries: typed errors via `thiserror`. Applications: `anyhow` with `.context()`.
+- Follow the repository's error model. Preserve typed errors where callers need
+  to branch and add context where failures cross subsystem boundaries.
 - No `.unwrap()` / `.expect()` on fallible paths outside tests, `main`, or cases
   with a proven invariant (document it with a comment).
 - Use `?` over manual `match` on `Result`. Prefer `Result<T, E>` over panics for
@@ -57,10 +66,10 @@ the file and line, name the rule, and show the fix.
 - Check `Arc`/`Mutex` granularity and for obvious deadlock ordering.
 
 ### Performance
-- Avoid allocations in loops; reuse buffers, prefer iterators over intermediate
-  `Vec`s, use `&str`/`Cow` to avoid copies.
-- `collect()` into the right type; avoid `clone` in iterator chains.
-- Flag `String` concatenation in loops (use `write!`/`push_str`).
+- Flag allocation, copying, hashing, dispatch, or contention only when the code
+  is plausibly hot or the cost scales with unbounded input.
+- Do not present an optimization as a fix without evidence that the path
+  matters. Use `rust-performance` for profiling and before/after measurement.
 
 ## Output format
 
@@ -72,4 +81,5 @@ why: <the rule / consequence>
 fix: <concrete change, with a code snippet if non-trivial>
 ```
 
-End with a short summary: blocking issues, then suggestions, then nits.
+End with the checks run and their outcomes. If there are no findings, say so
+explicitly and note any untested paths or residual risks.

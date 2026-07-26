@@ -8,11 +8,14 @@ description: Review and guide UI and UX for visual hierarchy, layout, spacing, t
 Review like a senior product designer who also ships code.
 Be opinionated and specific. Tie every note to a principle and a concrete fix, not taste alone.
 Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
+Follow explicit user direction, a supplied reference, and the product's design
+system before applying the default preferences below.
 
 ## Workflow
 
 1. If there is a running UI, look at it (screenshot or browser) before reading code. Judge what the user sees first.
-2. Evaluate at multiple breakpoints (mobile + desktop) and in both light/dark if themed.
+2. Evaluate the available breakpoints, themes, and interaction states. Report
+   important contexts that could not be inspected instead of assuming they work.
 3. Group findings: accessibility/correctness > hierarchy/clarity > polish.
 4. Keep the worktree read-only unless the user also asks to implement the fixes.
 
@@ -30,53 +33,50 @@ Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
   (~60-75ch for body text).
 
 ### Typography
-- A small, deliberate type scale. Limit families and weights, normal and light weights are enough in most cases.
+- Use a small, deliberate type scale. Limit families and weights to those that
+  create a clear, consistent hierarchy.
 - Line-height ~1.4-1.6 for body; tighter for headings. Sufficient contrast between heading and body sizes.
 
 ### Color & contrast
 - Color choices come from tokens, not one-off hex. Semantic colors (success,
   danger) used consistently.
-- Text/background contrast meets WCAG AA (4.5:1 body, 3:1 large/UI). Never rely
-  on color alone to convey meaning.
+- Text contrast meets WCAG AA (4.5:1 for normal text and 3:1 for large text);
+  non-text UI components meet the applicable 3:1 requirement. Never rely on
+  color alone to convey meaning.
 
 ### Accessibility (blocking)
 - Semantic HTML (`button`, `nav`, `label`); ARIA only to fill real gaps.
 - All interactive elements are keyboard reachable with a visible focus ring.
 - Form inputs have associated labels; images have alt text; icons-only buttons
   have accessible names.
-- Respects `prefers-reduced-motion`; tap targets >= 44x44px.
+- Respect `prefers-reduced-motion`. Meet the WCAG 2.2 AA target-size minimum and
+  prefer roughly 44x44px for primary touch targets where the platform allows.
 
 ### Interaction & states
 - Every interactive element has hover, focus, active, and disabled states.
 - Loading, empty, and error states are designed, not afterthoughts.
 - Transitions are fast (~150-250ms) and purposeful; easing feels natural.
-- Optimistic feedback for user actions; no dead-feeling clicks.
+- Give immediate feedback for user actions. Use optimistic state only when the
+  action is reversible or conflict-safe and failures have a recovery path.
 
 ### Content
 - Microcopy is concise and human. Buttons name the action ("Save changes", not
   "Submit"). Error messages explain what happened and what to do.
 
-### Eyebrow and kicker labels (prohibited)
-- Never place a small label, eyebrow, kicker, supertitle, category, or uppercase
-  slogan above a hero or section heading. These labels make interfaces feel
-  template-driven and weaken the heading hierarchy.
-- Remove existing labels such as "AI DEVELOPMENT PARTNER", "Features",
-  "Pricing", "Explore", or status/category copy instead of renaming or
-  rewriting them.
-- Put essential category or status information in the heading, body copy,
-  navigation, breadcrumb, or an in-content status badge. Do not preserve it as
-  text above the heading.
+### Restrained editorial and personal-site style
 
-### Generic marketing callout cards (prohibited)
-- Never wrap a CTA, contact prompt, summary, or process in a large tinted card
-  with oversized rounded corners. Do not use the common generated-LP
-  composition of padded color panel, internal divider, checklist, pill CTA,
-  and decorative bottom stripe or progress-like segments.
-- Do not repair this pattern by changing its color, radius, shadow, gradient, or
-  copy. Remove the card treatment and flatten the content into the page flow.
-- Use whitespace and a simple top or bottom border to separate the section.
-  Keep the heading, concise body copy, and one action; omit promotional
-  checklists and purely decorative bars.
+When the requested direction is restrained, editorial, or personal rather than
+promotional:
+
+- Avoid eyebrow or kicker labels that add no essential category or status
+  information. Prefer putting necessary context in the heading, body,
+  navigation, breadcrumb, or an in-content status badge.
+- Avoid generated-looking CTA panels with oversized tinted cards, decorative
+  strips, redundant checklists, and pill buttons. Prefer whitespace, a simple
+  rule, concise copy, and one clear action.
+- Treat these as style-specific defaults, not universal prohibitions. Preserve
+  established brand components or a supplied reference unless the user asks to
+  depart from them.
 
 ## Output format
 

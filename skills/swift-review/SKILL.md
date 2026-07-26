@@ -1,39 +1,50 @@
 ---
 name: swift-review
-description: Review Swift, SwiftUI, AppKit, or UIKit code for correctness, memory ownership, concurrency, main-thread discipline, state management, platform idiom, and performance risks. Use when the user asks to review, audit, or assess Swift code, a Swift diff or pull request, actors, Combine, SwiftUI state, AppKit behavior, or Xcode warnings.
+description: Review Swift, SwiftUI, AppKit, or UIKit code for correctness, memory ownership, concurrency, main-thread discipline, state management, platform idiom, and performance risks. Use when the user asks to review, audit, or assess Swift code, a Swift diff or pull request, actors, Combine, SwiftUI state, AppKit behavior, or the significance of Xcode warnings.
 ---
 
 # Swift / AppKit / SwiftUI Review
 
 Review with the standards of a senior native-platform engineer. Native apps
 exist to be fast and feel native; correctness on the main thread and memory
-discipline are what deliver that. Cite file and line, name the rule, show the
-fix.
+discipline are what deliver that. Audit and report by default; do not edit,
+commit, or push unless the user asks for a fix. Cite the file and line and
+explain the concrete failure mode.
 
 ## Workflow
 
-1. Run tooling first:
-   - `xcodebuild build` (or `swift build`) — compiler warnings are findings
-   - SwiftLint / swift-format if the project uses them
-   - targeted tests: `xcodebuild test -only-testing:<Suite>/<Case>` — prefer
-     narrow runs over full-suite loops
-2. Read public types and protocol conformances before implementations.
-3. Group findings: memory/concurrency > correctness > platform idiom > nits.
+1. Read repository guidance and resolve the review scope, platform target,
+   scheme or package, and comparison base.
+2. Discover and run the repository's documented, relevant build, lint, and
+   targeted test commands. Do not guess an Xcode scheme or run every destination
+   when a narrower supported check exists.
+3. Read public types and protocol conformances before implementations, then
+   trace each suspected defect through lifetimes, isolation, state ownership,
+   and callers.
+4. Report only actionable findings supported by a reachable failure, violated
+   invariant, diagnostic, or concrete maintenance cost.
+
+Do not infer a contract from names or style alone. If required behavior,
+reachability, lifetime, or caller expectations cannot be established, report
+the uncertainty as a question or residual risk rather than a finding.
 
 ## What to check
 
 ### Memory & ownership
-- Retain cycles: `[weak self]` in escaping closures that outlive the caller;
-  `unowned` only when the lifetime relationship is proven.
-- Delegates are `weak`. NotificationCenter/KVO observers are removed (or use
-  the token-based APIs).
+- Trace who retains each escaping closure. Use `[weak self]` only when it breaks
+  a real cycle or intentionally permits work to disappear; a weak capture can
+  silently drop required work. Use `unowned` only when the lifetime relationship
+  is proven.
+- Verify delegate and observer ownership against the framework contract. Use a
+  weak delegate when the owner retains its delegate; retain and remove
+  token-based observations deliberately.
 - Value semantics by default: `struct` unless identity or reference sharing is
   required. Flag classes that could be structs.
 
 ### Concurrency
-- UI work on the main thread only: `@MainActor` on view models and UI-touching
-  types; no `DispatchQueue.main.async` sprinkled as a bandage over an unclear
-  threading model.
+- Keep UI state and UI-touching methods on the main actor. Do not isolate
+  parsing, I/O, or other expensive non-UI work there merely because a type is
+  called a view model.
 - Structured concurrency over ad-hoc GCD: `async/await`, `Task`, actors.
   Flag `Task { }` fire-and-forget with no cancellation story.
 - Data races: mutable state shared across tasks must be actor-isolated or
@@ -49,22 +60,26 @@ fix.
   every edit.
 
 ### SwiftUI
-- State ownership is explicit: `@State` for local, `@Observable`/
-  `@StateObject` for owned models, plain `let` for passed-in data. Flag
-  `@ObservedObject` used where the view actually owns the object.
+- State ownership is explicit: use `@State` for local value state and owned
+  `@Observable` references, `@StateObject` for owned `ObservableObject`
+  instances, and `@Bindable` or `@ObservedObject` for injected observable models
+  when those wrappers match the observation system in use.
 - Body stays cheap: no allocation-heavy work or side effects in `body`.
 - Identity is stable in `ForEach`; no `UUID()` as an inline id.
 
 ### Error handling & API design
-- `throws` over optional-as-error; `Result` only at callback boundaries.
+- Prefer `throws` over optional-as-error for linear control flow. Use `Result`
+  when an error value must be stored, transported, or bridged through a callback
+  and that matches the surrounding API.
 - No `try!` / force-unwrap outside tests and provably-safe invariants.
 - Prefer protocol-oriented seams that already exist in the codebase; extend
   them rather than adding parallel abstractions.
 
 ## Performance claims
 
-Any change justified by performance needs before/after numbers (Instruments,
-signposts, or a benchmark target). No measurable gain → say so and revert.
+Flag performance claims that lack before/after evidence, but do not turn a
+review into an optimization experiment. Use `swift-performance` when the user
+asks to profile or improve a measured path.
 
 ## Output format
 
@@ -74,4 +89,5 @@ why: <the rule / consequence>
 fix: <concrete change, with a snippet if non-trivial>
 ```
 
-End with a summary: blocking issues, then suggestions, then nits.
+End with the checks run and their outcomes. If there are no findings, say so
+explicitly and note any untested paths or residual risks.

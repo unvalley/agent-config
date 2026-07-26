@@ -9,22 +9,36 @@ Make Rust faster without breaking it. Correctness and soundness come first;
 performance never justifies a wrong answer or undefined behavior. Optimize the
 hot path, leave the cold path readable, and prove every change with a number.
 
+Resolve the requested mode before editing. For diagnosis or performance review,
+capture the baseline, identify the dominant cost, and report the evidence and
+measurement plan without changing production behavior. Implement an
+optimization only when the user asks to improve or fix the measured path.
+
 ## Workflow: measure, change one thing, measure again
 
-1. **Profile before touching anything.** Find the real hot path; intuition is
-   usually wrong.
+1. **Establish a baseline before changing production behavior.** Add minimal,
+   isolated instrumentation or a benchmark when needed, then find the real hot
+   path.
    - `cargo flamegraph` or [`samply`](https://github.com/mstange/samply) for CPU.
    - [`criterion`](https://crates.io/crates/criterion) or `cargo bench` for
      micro-benchmarks; `divan` for lighter ones.
    - `dhat` / `valgrind --tool=dhat` or `--tool=callgrind` for allocations.
    - `cargo-instruments` on macOS for system-level traces.
-2. **Build in release** (`--release`) for every measurement. Debug numbers lie.
+2. **Use a representative optimized build** for measurements. Keep build
+   profiles, target CPU, features, data, and environment identical between
+   baseline and after runs.
 3. **Change one variable**, re-run the same benchmark, keep the win or revert.
    Record the before/after numbers in the PR.
-4. **Guard against regressions**: commit the benchmark, and add
-   `const _: () = assert!(size_of::<T>() <= N);` for size-sensitive types.
+4. **Guard durable hot paths** with a repeatable benchmark when it will remain
+   stable. Add a target-aware size assertion only when layout is an intentional
+   invariant rather than an incidental compiler result.
 
-## Allocation: the usual #1 cost
+## Optimization candidates
+
+Use the following only after profiling identifies the corresponding cost. They
+are experiment ideas, not default replacements.
+
+### Allocation
 
 - **Reuse buffers** across iterations instead of allocating per loop. Hoist a
   `String` / `Vec` out of the loop and `.clear()` it.
@@ -39,11 +53,12 @@ hot path, leave the cold path readable, and prove every change with a number.
 - **Avoid `collect()` into a throwaway `Vec`**: chain iterators, or
   `extend`/`for` into an existing buffer.
 
-## Strings
+### Strings
 
 - **`CompactString`** ([`compact_str`](https://crates.io/crates/compact_str)):
-  drop-in `String` replacement that stores strings up to 24 bytes inline with no
-  heap allocation. Great default when most strings are short.
+  stores many short strings inline. Confirm the current crate and target layout,
+  the workload's length distribution, API conversion cost, binary impact, and
+  measured allocation reduction before adopting it.
 - **Borrow, don't own**: take `&str`, return `Cow<str>` when output is sometimes
   unchanged, use `Box<str>` for immutable owned strings (smaller than `String`,
   no spare capacity).
@@ -55,46 +70,49 @@ hot path, leave the cold path readable, and prove every change with a number.
   use [`memchr`](https://crates.io/crates/memchr) for byte/substring search
   instead of `find` with a closure.
 
-## Hashing
+### Hashing
 
-- **Swap the default hasher** in hot maps: std's `HashMap` uses SipHash (DoS
-  resistant but slow). Use `FxHashMap` / `FxHashSet` from
+- **Test an alternate hasher** when hashing is measured as material. The
+  standard map default is security-oriented; `FxHashMap` / `FxHashSet` from
   [`rustc-hash`](https://crates.io/crates/rustc-hash) or `ahash` for
-  non-adversarial, internal keys.
+  non-adversarial internal keys can trade collision resistance and dependency
+  cost for speed.
 - Reserve capacity (`HashMap::with_capacity_and_hasher`).
 - For small integer keys, consider a plain `Vec` indexed by id over a hash map.
 
-## Type layout and size
+### Type layout and size
 
 - **Keep enums small.** An enum is as large as its biggest variant; one fat
   variant bloats every value. `Box` the large/rare variant (`Box<BigThing>`) so
   the common variants stay cheap to move and store.
 - **Check sizes**: `std::mem::size_of::<T>()`, and lock them with a
   `const` assert so growth is caught in review.
-- Order struct fields to minimize padding when it matters; prefer niche-friendly
-  types (`NonZeroU32`, `Option<&T>`) to shrink `Option`s.
+- Inspect actual target layout before changing representation. Niche-friendly
+  types such as `NonZeroU32` can shrink some `Option`s, but lock layout only when
+  that size is part of the performance or ABI contract.
 
-## Inlining and dispatch
+### Inlining and dispatch
 
 - **`#[inline]`** on small, hot functions that cross crate boundaries (the
-  compiler won't inline across crates without it); reserve `#[inline(always)]`
-  for the hottest, tiny functions. Don't sprinkle it everywhere - it can hurt
-  I-cache and code size.
+  optimizer may need an inline hint or LTO to see). Test runtime and code size;
+  reserve `#[inline(always)]` for rare cases supported by evidence.
 - **Prefer static dispatch in hot loops**: generics/`impl Trait` monomorphize;
   `dyn Trait` adds a vtable indirection per call. Use enum dispatch over
   `Box<dyn>` when the set of types is closed.
-- **`#[cold]` / `#[inline(never)]`** on error and slow paths so the optimizer
-  keeps the hot path tight; pull unlikely branches into a separate `#[cold] fn`.
+- **`#[cold]` / `#[inline(never)]`** on measured error or slow paths only when
+  profiles or generated code show that separation helps the hot path.
 
-## Iteration
+### Iteration
 
-- Iterators over manual indexing - they elide bounds checks and fuse well.
-- Avoid intermediate `Vec`s between adapters; only `collect()` at the end.
+- Prefer the clearest idiomatic loop or iterator first. Compare generated code
+  or benchmark results before claiming bounds-check elimination or fusion.
+- Avoid intermediate collections when profiles show their allocation or copies
+  matter.
 - Hoist invariant work out of loops; precompute outside.
 
-## Build profile (last-mile, whole-program)
+### Build profile (last-mile, whole-program)
 
-A speed-maximizing release profile in `Cargo.toml`:
+Treat settings such as these as experiments, not a universal release profile:
 
 ```toml
 [profile.release]
@@ -129,7 +147,7 @@ When reviewing for performance, for each finding:
 ```
 [hot|warm|cold] path/to/file.rs:LINE - <what costs here>
 cost: <allocation / hash / copy / indirection, and why it's on the hot path>
-fix:  <concrete change + crate, e.g. "CompactString", "FxHashMap", "Box variant">
+experiment: <one change that targets the measured cost>
 measure: <benchmark or profile to confirm the win>
 ```
 

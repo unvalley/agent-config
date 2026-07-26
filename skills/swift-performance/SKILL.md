@@ -10,6 +10,11 @@ behavior, optimize the measured hot path, and keep only measurable wins. Use
 `swift-review` instead when the request is a broad correctness or idiom review
 without a concrete performance investigation.
 
+Resolve the requested mode before editing. For measurement or diagnosis only,
+capture the baseline, identify the dominant cost, and report the evidence and
+next experiment without changing production behavior. Implement an optimization
+only when the user asks to improve or fix the measured path.
+
 ## Workflow
 
 1. Define one user-visible operation and one primary metric. State the device,

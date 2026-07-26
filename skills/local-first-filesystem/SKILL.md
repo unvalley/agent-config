@@ -38,7 +38,8 @@ Commit with optimistic concurrency:
 2. Flush and close it; sync file and directory metadata when the durability
    contract requires survival across power loss.
 3. Re-read or re-sign the destination immediately before replacement.
-4. Replace atomically only when its signature still matches the base snapshot.
+4. Replace atomically only when its signature still matches the base snapshot
+   and the target filesystem and API provide the required atomicity.
 5. If it differs, preserve the proposed bytes as a uniquely named conflict copy
    and leave the destination untouched.
 6. Publish the committed signature to in-memory state only after replacement
@@ -47,7 +48,15 @@ Commit with optimistic concurrency:
 Keep temporary files on the same filesystem as the destination. Preserve
 required permissions and metadata deliberately. Treat disk-full, permission,
 flush, replace, and directory-sync failures as visible commit failures; do not
-advance state or report success.
+advance state or report success. If a replace or sync call fails after the
+operation may have taken effect, re-read and re-sign the destination, mark the
+commit unresolved, and reconcile before retrying. Never overwrite blindly after
+an ambiguous result.
+
+Verify replace, flush, and directory-sync semantics on every supported
+filesystem and sync provider. Where the platform cannot guarantee atomic
+replacement or crash durability, state a weaker recovery contract explicitly
+instead of claiming old-or-new atomicity.
 
 Name conflict copies predictably but collision-safely. Include the original
 name, a conflict marker, and enough local identity such as device plus timestamp
@@ -108,5 +117,7 @@ Require these durable properties:
 - A detected concurrent edit preserves both versions.
 - Replaying watcher events or rescanning converges without duplicate effects.
 - Deleting every derived artifact and rebuilding produces equivalent results.
-- A crash at any injected boundary produces either the old version or the new
-  version, never a partially written canonical file.
+- On targets with verified atomic replace and durability primitives, a crash at
+  any injected boundary produces either the old version or the new version,
+  never a partially written canonical file. Other targets detect and surface
+  the documented recovery state without silently discarding a version.
