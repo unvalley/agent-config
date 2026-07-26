@@ -1,4 +1,4 @@
 interface:
   display_name: "English Writing"
-  short_description: "Rewrite English prose naturally and precisely"
-  default_prompt: "Use $english-writing to rewrite this prose for its intended audience without changing supported facts."
+  short_description: "Polish English without changing meaning or voice"
+  default_prompt: "Use $english-writing to polish this English prose while preserving its meaning, voice, citations, links, and structure."
