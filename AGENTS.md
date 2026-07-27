@@ -32,6 +32,7 @@ activated when a task matches its description.
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
 | [`english-writing`](skills/english-writing/SKILL.md) | Natural English rewrites that preserve facts, voice, citations, and links |
 | [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
+| [`write-pr`](skills/write-pr/SKILL.md) | Terse PR descriptions: change list, 体言止め, template compliance, diff links |
 | [`ghq-create-repository`](skills/ghq-create-repository/SKILL.md) | Create GitHub repositories in the canonical local ghq tree |
 
 ## Subagents
