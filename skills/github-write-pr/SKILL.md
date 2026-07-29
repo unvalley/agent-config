@@ -1,12 +1,12 @@
 ---
-name: write-pr
+name: github-write-pr
 description: Write or update a pull request description as a terse change list with diff-anchored file links. Use when the user asks to write, draft, review, or fix a PR description or body, open a pull request, fill in a PR template, or turn branch commits into PR copy.
 ---
 
 # Write PR
 
 Write PR descriptions a reviewer can scan in seconds: a short list of changes
-grounded in the actual diff. Use `conventional-commits` for the PR title and
+grounded in the actual diff. Use `git-commits` for the PR title and
 for grounding rules. This skill drafts or edits copy; it does not by itself
 authorize pushing, opening, or updating a pull request.
 

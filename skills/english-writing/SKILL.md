@@ -1,6 +1,6 @@
 ---
 name: english-writing
-description: Rewrite and copyedit existing English prose for clarity, natural rhythm, concision, tone, and audience fit while preserving meaning, factual claims, voice, citations, links, and structure. Use when a user supplies English text or a prose file and asks to polish, simplify, tighten, remove formulaic or AI-sounding phrasing, match a writing sample, or produce a final rewrite across essays, posts, documentation, articles, marketing, personal writing, or fiction. For commit messages and pull request copy, use conventional-commits first to ground the text in the diff.
+description: Rewrite and copyedit existing English prose for clarity, natural rhythm, concision, tone, and audience fit while preserving meaning, factual claims, voice, citations, links, and structure. Use when a user supplies English text or a prose file and asks to polish, simplify, tighten, remove formulaic or AI-sounding phrasing, match a writing sample, or produce a final rewrite across essays, posts, documentation, articles, marketing, personal writing, or fiction. For commit messages and pull request copy, use git-commits first to ground the text in the diff.
 ---
 
 # English Writing
@@ -66,7 +66,7 @@ change needed when the brief is ambiguous.
 - Change headings, list structure, link labels, or other formatting only when
   the requested edit requires it and the meaning remains intact.
 - For commit messages, pull request titles, and pull request descriptions, use
-  `conventional-commits` to inspect the diff and establish accurate content
+  `git-commits` to inspect the diff and establish accurate content
   before applying this skill as a prose pass.
 
 ## Workflow

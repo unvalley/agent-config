@@ -1,6 +1,6 @@
 # Git Workflow
 
-- Use the `conventional-commits` skill.
+- Use the `git-commits` skill.
 - Keep PRs focused, small and reviewable. If a PR is too large, break it into smaller ones.
 - Commit only the intended slice. In a dirty tree, stage the target files
   explicitly and verify with `git status` / `git diff --staged` before

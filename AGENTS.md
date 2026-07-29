@@ -28,12 +28,12 @@ activated when a task matches its description.
 | [`swift-performance`](skills/swift-performance/SKILL.md) | Measured Swift / SwiftUI / AppKit performance work with Instruments and benchmarks |
 | [`local-first-filesystem`](skills/local-first-filesystem/SKILL.md) | Conflict-safe filesystem persistence, external changes, watchers, rebuildable indexes |
 | [`release-engineering`](skills/release-engineering/SKILL.md) | Reproducible release preparation, packaging, signing, publication, and verification |
-| [`ci-fix`](skills/ci-fix/SKILL.md) | Triage and fix failing GitHub Actions PR checks via `gh` |
+| [`github-fix-ci`](skills/github-fix-ci/SKILL.md) | Triage and fix failing GitHub Actions PR checks via `gh` |
 | [`design-review`](skills/design-review/SKILL.md) | UI/UX critique: hierarchy, spacing, a11y, interaction polish |
 | [`english-writing`](skills/english-writing/SKILL.md) | Natural English rewrites that preserve facts, voice, citations, and links |
-| [`conventional-commits`](skills/conventional-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
-| [`write-pr`](skills/write-pr/SKILL.md) | Terse PR descriptions: change list, 体言止め, template compliance, diff links |
-| [`ghq-create-repository`](skills/ghq-create-repository/SKILL.md) | Create GitHub repositories in the canonical local ghq tree |
+| [`git-commits`](skills/git-commits/SKILL.md) | Conventional Commit messages and PR descriptions |
+| [`github-write-pr`](skills/github-write-pr/SKILL.md) | Terse PR descriptions: change list, 体言止め, template compliance, diff links |
+| [`git-ghq`](skills/git-ghq/SKILL.md) | Create GitHub repositories in the canonical local ghq tree |
 
 ## Subagents
 

@@ -1,5 +1,5 @@
 ---
-name: ci-fix
+name: github-fix-ci
 description: Diagnose or fix failing GitHub pull request checks that run on GitHub Actions. Use when the user asks to investigate red CI, inspect a failed PR check or workflow run, explain a GitHub Actions failure, or implement and verify a CI fix.
 ---
 

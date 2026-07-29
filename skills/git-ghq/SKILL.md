@@ -1,5 +1,5 @@
 ---
-name: ghq-create-repository
+name: git-ghq
 description: Create or reconcile a GitHub repository and its local clone under the canonical ghq root. Use when the user asks to create, initialize, or set up a new GitHub repository and wants it placed in the local ghq tree, including shared package repositories such as typescript-kit or swift-kit.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: conventional-commits
+name: git-commits
 description: Write and review Conventional Commit messages and pull request titles or descriptions from the actual diff. Use when the user asks to commit changes, draft or fix a commit message, prepare PR copy, follow Conventional Commits, use czg, or produce changelog-friendly history.
 ---
 
