@@ -140,7 +140,7 @@ dependencies:
     - unvalley/agent-config/skills/design-review
     - unvalley/agent-config/skills/english-writing
     - unvalley/agent-config/skills/git-commits
-    - unvalley/agent-config/skills/github-write-pr
+    - unvalley/agent-config/skills/github-pull-request
     - unvalley/agent-config/skills/github-fix-ci
     - unvalley/agent-config/skills/git-ghq
 ```

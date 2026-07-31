@@ -1,5 +1,5 @@
 ---
-name: github-write-pr
+name: github-pull-request
 description: Write or update a pull request description as a terse change list with diff-anchored file links. Use when the user asks to write, draft, review, or fix a PR description or body, open a pull request, fill in a PR template, or turn branch commits into PR copy.
 ---
 
@@ -17,8 +17,8 @@ authorize pushing, opening, or updating a pull request.
   from it.
 - No prose paragraphs unless a template section explicitly asks for prose.
 - In Japanese, end each bullet with 体言止め. Never use ですます調.
-  - ✅ `- ログイン失敗時のリトライ処理を追加`
-  - ❌ `- ログイン失敗時のリトライ処理を追加しました`
+  - GOOD: `- ログイン失敗時のリトライ処理を追加`
+  - BAD: `- ログイン失敗時のリトライ処理を追加しました`
 - In English, use imperative fragments (`Add retry on login failure`),
   matching Conventional Commit description style.
 - Never invent changes, impact, or validation not supported by the diff.
