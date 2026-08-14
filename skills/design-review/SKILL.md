@@ -62,6 +62,15 @@ system before applying the default preferences below.
 ### Content
 - Microcopy is concise and human. Buttons name the action ("Save changes", not
   "Submit"). Error messages explain what happened and what to do.
+- Do not use visible prose to explain what an interface is or how to read an
+  otherwise self-evident UI. Make hierarchy, labels, controls, and data
+  visualization communicate the product model directly.
+- Treat explanatory introduction copy as design debt. Remove it unless it is
+  necessary for onboarding, safety, legal consent, an irreversible
+  consequence, or a genuinely unfamiliar concept that the interface cannot
+  express. Content such as names, dates, artwork context, and editorial
+  narrative is not explanatory UI copy; accessible names and hints may remain
+  nonvisual.
 
 ### Restrained editorial and personal-site style
 
