@@ -1,6 +1,6 @@
 ---
 name: github-pull-request
-description: Write or update a pull request description as a terse change list with diff-anchored file links. Use when the user asks to write, draft, review, or fix a PR description or body, open a pull request, fill in a PR template, or turn branch commits into PR copy.
+description: Write or update a pull request description as a terse change list grounded in the actual diff. Use when the user asks to write, draft, review, or fix a PR description or body, open a pull request, fill in a PR template, or turn branch commits into PR copy.
 ---
 
 # Write PR
@@ -33,24 +33,6 @@ authorize pushing, opening, or updating a pull request.
 - Mark sections that do not apply with `N/A` instead of deleting them or
   padding them with filler.
 
-## Diff links
-
-When a bullet names a specific file, link it to that file's anchor on the
-PR's files view. The anchor is `diff-` + SHA-256 of the repo-relative path:
-
-```sh
-printf %s "src/auth/login.rs" | shasum -a 256 | cut -d' ' -f1
-```
-
-```markdown
-- [src/auth/login.rs](https://github.com/OWNER/REPO/pull/123/files#diff-<hash>)にリトライ処理を追加
-```
-
-Anchors need the PR number, so for a new PR open it first (with the plain
-body), then add links via `gh pr edit --body-file`. Hash the exact
-repo-relative path with no leading `./` and no trailing newline (`printf`,
-not `echo`).
-
 ## Workflow
 
 1. Resolve the target: a new PR (base-to-head diff, branch commits) or an
@@ -60,6 +42,5 @@ not `echo`).
 3. Draft the change list per the style rules, in the language the repo's PRs
    or the user use. Group mechanical churn (formatting, lockfiles) into one
    bullet.
-4. Link file mentions to their diff anchors once a PR number exists.
-5. Re-check every bullet against the diff before delivering: no invented
+4. Re-check every bullet against the diff before delivering: no invented
    changes, no ですます調 in Japanese copy, no extra headings.
