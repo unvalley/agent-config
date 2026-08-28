@@ -1,11 +1,6 @@
 # Debugging
 
-- No speculative fixes. Never push "try this" changes one after another.
-  Trace the exact code path, add logging or a failing test, and confirm the
-  root cause with evidence before editing.
-- One hypothesis at a time. State the hypothesis, state what evidence would
-  confirm or refute it, then gather that evidence.
-- Performance changes require measurement. Take a baseline, apply the change,
-  measure again with the same harness. No measurable gain → say so and revert.
-- Distinguish "the symptom stopped" from "the cause is fixed". If you can't
-  explain why the fix works, the investigation isn't done.
+- Confirm the root cause before editing; don't stack speculative fixes.
+- Test one hypothesis at a time against explicit confirming or refuting evidence.
+- Measure performance before and after with the same harness; revert changes with no measurable gain.
+- A stopped symptom is not a fixed cause unless the mechanism is understood.
