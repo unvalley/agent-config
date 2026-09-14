@@ -7,9 +7,9 @@ description: Review TypeScript, JavaScript, or Node.js code for type safety, asy
 
 Review with the standards of a senior TypeScript engineer. The type system is a
 tool for correctness, not decoration. Prioritize runtime correctness and type
-soundness, then maintainability. Audit and report by default; do not edit,
-commit, or push unless the user asks for a fix. Cite the file and line and
-explain the concrete failure mode.
+soundness first, then maintainability, then measured performance risk. Audit
+and report by default; do not edit, commit, or push unless the user asks for a
+fix. Cite the file and line and explain the concrete failure mode.
 
 ## Workflow
 
@@ -21,7 +21,8 @@ explain the concrete failure mode.
 3. Read exported signatures and public types before implementations, then trace
    each suspected defect through runtime inputs and callers.
 4. Report only actionable findings supported by a reachable failure, violated
-   invariant, diagnostic, or concrete maintenance cost.
+   invariant, diagnostic, or concrete maintenance cost. Separate new issues from
+   pre-existing failures when the base revision is available.
 
 Do not infer a contract from names or style alone. If required behavior,
 reachability, input bounds, or caller expectations cannot be established,
@@ -66,6 +67,13 @@ report the uncertainty as a question or residual risk rather than a finding.
 - No deep imports into other packages' internals.
 - Avoid Node built-ins in code meant to be isomorphic; gate platform code.
 - Check for `process.env` access without validation/defaults.
+
+### Performance
+- Flag redundant work, serialization, unbounded concurrency, or allocation in
+  loops only when the code is plausibly hot or the cost scales with unbounded
+  input.
+- Do not present an optimization as a fix without before/after evidence that
+  the path matters.
 
 ### Quality nits
 - Prefer `const`; `let` only when reassigned. No `var`.

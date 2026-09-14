@@ -10,10 +10,11 @@ behavior, optimize the measured hot path, and keep only measurable wins. Use
 `swift-review` instead when the request is a broad correctness or idiom review
 without a concrete performance investigation.
 
-Resolve the requested mode before editing. For measurement or diagnosis only,
-capture the baseline, identify the dominant cost, and report the evidence and
-next experiment without changing production behavior. Implement an optimization
-only when the user asks to improve or fix the measured path.
+Resolve the requested mode before editing. For measurement, diagnosis, or
+review, capture the baseline, identify the dominant cost, and report the
+evidence and the next experiment without changing production behavior.
+Implement an optimization only when the user asks to improve or fix the
+measured path.
 
 ## Workflow
 
@@ -75,7 +76,7 @@ Run the relevant correctness tests after the performance experiment. Add a
 repeatable benchmark or XCTest performance test when it protects a durable hot
 path without becoming flaky.
 
-Report:
+When implementing an optimization, report each experiment:
 
 ```text
 scenario: <user-visible operation and conditions>

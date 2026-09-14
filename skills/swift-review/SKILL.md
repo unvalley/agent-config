@@ -7,7 +7,8 @@ description: Review Swift, SwiftUI, AppKit, or UIKit code for correctness, memor
 
 Review with the standards of a senior native-platform engineer. Native apps
 exist to be fast and feel native; correctness on the main thread and memory
-discipline are what deliver that. Audit and report by default; do not edit,
+discipline are what deliver that. Prioritize those first, then maintainability,
+then measured performance risk. Audit and report by default; do not edit,
 commit, or push unless the user asks for a fix. Cite the file and line and
 explain the concrete failure mode.
 
@@ -22,7 +23,8 @@ explain the concrete failure mode.
    trace each suspected defect through lifetimes, isolation, state ownership,
    and callers.
 4. Report only actionable findings supported by a reachable failure, violated
-   invariant, diagnostic, or concrete maintenance cost.
+   invariant, diagnostic, or concrete maintenance cost. Separate new issues from
+   pre-existing failures when the base revision is available.
 
 Do not infer a contract from names or style alone. If required behavior,
 reachability, lifetime, or caller expectations cannot be established, report
@@ -56,7 +58,7 @@ the uncertainty as a question or residual risk rather than a finding.
 - Batch text mutations inside `beginEditing`/`endEditing`; avoid layout passes
   per keystroke.
 - Coalesce expensive work triggered by typing (highlighting, parsing) with
-  debounce or incremental invalidation — never reprocess the whole document on
+  debounce or incremental invalidation; never reprocess the whole document on
   every edit.
 
 ### SwiftUI
@@ -75,13 +77,16 @@ the uncertainty as a question or residual risk rather than a finding.
 - Prefer protocol-oriented seams that already exist in the codebase; extend
   them rather than adding parallel abstractions.
 
-## Performance claims
-
-Flag performance claims that lack before/after evidence, but do not turn a
-review into an optimization experiment. Use `swift-performance` when the user
-asks to profile or improve a measured path.
+### Performance
+- Flag recomputation, layout work, main-thread I/O, allocation churn, or
+  contention only when the code is plausibly hot or the cost scales with
+  unbounded input.
+- Do not present an optimization as a fix without evidence that the path
+  matters. Use `swift-performance` for profiling and before/after measurement.
 
 ## Output format
+
+For each finding:
 
 ```
 [severity] path/to/File.swift:LINE - <one-line problem>

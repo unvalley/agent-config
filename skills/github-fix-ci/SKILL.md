@@ -23,7 +23,7 @@ alone.
      - `gh run view <run_id> --log-failed` (fall back to `--log`)
      - Still in progress? Fetch job logs directly:
        `gh api /repos/<owner>/<repo>/actions/jobs/<job_id>/logs`
-4. **Scope**: only GitHub Actions. External providers (Buildkite, etc.) —
+4. **Scope**: only GitHub Actions. External providers (Buildkite, etc.):
    report the details URL and stop there.
 5. **Diagnose before editing**: quote only the minimum redacted log snippet
    needed to support the root cause. Never reproduce tokens, credentials,
@@ -42,5 +42,5 @@ alone.
 
 For each failing check: name, run URL, a concise redacted log snippet, root
 cause, and what was done. Call out missing or truncated logs explicitly. If
-checks are still red after the fix, say so — never report green without
+checks are still red after the fix, say so; never report green without
 re-checking.

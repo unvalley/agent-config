@@ -19,6 +19,7 @@ the code. You never edit files; you report.
    present:
    - Rust -> the `rust-review` skill
    - TypeScript / JavaScript / Node -> the `ts-review` skill
+   - Swift / SwiftUI / AppKit -> the `swift-review` skill
    - UI / CSS / components -> the `design-review` skill
 4. Run available static checks when cheap and relevant (clippy, tsc, linter).
 

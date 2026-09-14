@@ -9,10 +9,11 @@ Make Rust faster without breaking it. Correctness and soundness come first;
 performance never justifies a wrong answer or undefined behavior. Optimize the
 hot path, leave the cold path readable, and prove every change with a number.
 
-Resolve the requested mode before editing. For diagnosis or performance review,
-capture the baseline, identify the dominant cost, and report the evidence and
-measurement plan without changing production behavior. Implement an
-optimization only when the user asks to improve or fix the measured path.
+Resolve the requested mode before editing. For measurement, diagnosis, or
+review, capture the baseline, identify the dominant cost, and report the
+evidence and the next experiment without changing production behavior.
+Implement an optimization only when the user asks to improve or fix the
+measured path.
 
 ## Workflow: measure, change one thing, measure again
 
@@ -153,3 +154,19 @@ measure: <benchmark or profile to confirm the win>
 
 End with the top 1-3 changes by expected impact, and explicitly note anything
 that needs a benchmark before committing.
+
+When implementing an optimization, report each experiment:
+
+```text
+scenario: <operation, input size, build profile, and hardware>
+metric: <duration, throughput, allocations, memory, or other unit>
+baseline: p50 <value>, p95 <value>, n=<count>
+after: p50 <value>, p95 <value>, n=<count>
+change: <one measured intervention>
+evidence: <benchmark command, profile, or trace>
+tradeoffs: <memory, binary size, complexity, behavior, or none observed>
+decision: keep | revert | inconclusive
+```
+
+Do not claim a speedup from code shape, fewer lines, or intuition. Say when no
+meaningful win was found.

@@ -78,7 +78,7 @@ For each finding:
 ```
 [severity] path/to/file.rs:LINE - <one-line problem>
 why: <the rule / consequence>
-fix: <concrete change, with a code snippet if non-trivial>
+fix: <concrete change, with a snippet if non-trivial>
 ```
 
 End with the checks run and their outcomes. If there are no findings, say so

@@ -5,19 +5,21 @@ description: Review and guide UI and UX for visual hierarchy, layout, spacing, t
 
 # Design Review
 
-Review like a senior product designer who also ships code.
-Be opinionated and specific. Tie every note to a principle and a concrete fix, not taste alone.
+Review like a senior product designer who also ships code. Be opinionated and
+specific: tie every note to a principle and a concrete fix, not taste alone.
 Distinguish blocking issues (broken, inaccessible) from polish (taste, delight).
 Follow explicit user direction, a supplied reference, and the product's design
-system before applying the default preferences below.
+system before applying the default preferences below. Audit and report by
+default; keep the worktree read-only unless the user also asks to implement
+the fixes.
 
 ## Workflow
 
-1. If there is a running UI, look at it (screenshot or browser) before reading code. Judge what the user sees first.
+1. If there is a running UI, look at it (screenshot or browser) before reading
+   code. Judge what the user sees first.
 2. Evaluate the available breakpoints, themes, and interaction states. Report
    important contexts that could not be inspected instead of assuming they work.
 3. Group findings: accessibility/correctness > hierarchy/clarity > polish.
-4. Keep the worktree read-only unless the user also asks to implement the fixes.
 
 ## What to check
 
@@ -27,15 +29,17 @@ system before applying the default preferences below.
 - Size, weight, color, and spacing should encode importance consistently.
 
 ### Layout & spacing
-- Spacing comes from a scale (4/8px or the design system's tokens), not arbitrary
-  values. Consistent rhythm between related elements; more space between groups.
+- Spacing comes from a scale (4/8px or the design system's tokens), not
+  arbitrary values. Consistent rhythm between related elements; more space
+  between groups.
 - Alignment to a grid; avoid optical misalignment. Respect max line lengths
   (~60-75ch for body text).
 
 ### Typography
 - Use a small, deliberate type scale. Limit families and weights to those that
   create a clear, consistent hierarchy.
-- Line-height ~1.4-1.6 for body; tighter for headings. Sufficient contrast between heading and body sizes.
+- Line-height ~1.4-1.6 for body; tighter for headings. Sufficient contrast
+  between heading and body sizes.
 
 ### Color & contrast
 - Color choices come from tokens, not one-off hex. Semantic colors (success,
@@ -97,4 +101,5 @@ principle: <the design principle at stake>
 fix: <concrete change - token, value, or pattern>
 ```
 
-End with: what's working well (briefly), blocking issues, then polish suggestions.
+End with: what's working well (briefly), blocking issues, then polish
+suggestions.
