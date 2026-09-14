@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Pull Request"
+  short_description: "Create or update PRs with diff-grounded copy"
+  default_prompt: "Use $github-pull-request to create or update this pull request with a title and change list grounded in the diff."

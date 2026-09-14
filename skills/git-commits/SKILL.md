@@ -1,14 +1,14 @@
 ---
 name: git-commits
-description: Write and review Conventional Commit messages and pull request titles or descriptions from the actual diff. Use when the user asks to commit changes, draft or fix a commit message, prepare PR copy, follow Conventional Commits, use czg, or produce changelog-friendly history.
+description: Write and review Conventional Commit messages from the staged diff. Use when the user asks to commit changes, draft or fix a commit message, follow Conventional Commits, use czg, or produce changelog-friendly history. For pull request titles and descriptions, use github-pull-request.
 ---
 
 # Conventional Commits
 
-Write commit messages and PR descriptions that follow the Conventional Commits spec.
-The message explains intent, not just the diff.
-This skill drafts or reviews copy. It does not by itself authorize staging,
-committing, pushing, or updating a pull request.
+Write commit messages that follow the Conventional Commits spec. The message
+explains intent, not just the diff. This skill drafts or reviews commit copy;
+it does not by itself authorize staging, committing, or pushing. Pull request
+titles and descriptions belong to `github-pull-request`.
 
 ## Format
 
@@ -50,27 +50,24 @@ BREAKING CHANGE: minimum supported runtime is now Node 20.
 
 ## Rules
 
-- Scope is a noun describing the area (`feat(auth):`, `fix(parser):`). Keep it short and consistent with the codebase's existing scopes.
-- Body explains *why* and notable *what*, wrapped at ~72 cols. Reference issues in the footer: `Refs: #123`, `Closes: #123`.
+- Scope is a noun describing the area (`feat(auth):`, `fix(parser):`). Keep it
+  short and consistent with the codebase's existing scopes.
+- Body explains *why* and notable *what*, wrapped at ~72 cols. Reference issues
+  in the footer: `Refs: #123`, `Closes: #123`.
 - Never invent changes, validation, impact, or issue relationships that are not
   supported by the diff and repository evidence.
-- Follow the PR template if the repo has one. Use a Conventional Commit-style PR
-  title only when repository history or checks expect it.
+- One commit, one change. If the staged diff mixes unrelated changes, say so
+  and propose the split instead of writing a vague subject.
 
 ## Workflow
 
-1. Resolve the requested artifact and inspect its complete source:
-   - Commit message: inspect `git diff --cached`. If the user explicitly wants a
-     draft for unstaged work, inspect that diff and say it is not the staged
-     commit scope.
-   - New PR title or description: inspect the target base-to-head diff, branch
-     commits, repository template, and linked issues.
-   - Existing PR copy: inspect the PR metadata and `gh pr diff <pr>` or the
-     equivalent base-to-head range.
+1. Inspect the staged diff with `git diff --cached`. If the user explicitly
+   wants a draft for unstaged work, inspect that diff and say it is not the
+   staged commit scope.
 2. Identify the intent, user-visible effect, root cause when relevant, and
    validation actually performed. Do not summarize only filenames.
-3. For a commit, pick the single most accurate type and a scope consistent with
-   recent history, then add a body or footer only when it carries useful context.
-4. For a PR, write a concise title and a body that explains why, what changed,
-   impact, and validation without forcing commit-message syntax onto every
-   section.
+3. Pick the single most accurate type and a scope consistent with recent
+   history (`git log --oneline`), then add a body or footer only when it
+   carries useful context.
+4. Re-check the result against the diff before delivering: one change, one
+   type, nothing invented.

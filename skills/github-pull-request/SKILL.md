@@ -1,16 +1,25 @@
 ---
 name: github-pull-request
-description: Write or update a pull request description as a terse change list grounded in the actual diff. Use when the user asks to write, draft, review, or fix a PR description or body, open a pull request, fill in a PR template, or turn branch commits into PR copy.
+description: Create or update a GitHub pull request with gh, including the title, a terse change-list description grounded in the actual diff, and PR template compliance. Use when the user asks to open, create, write, draft, review, or fix a pull request, PR title, or PR body, fill in a PR template, or turn branch commits into PR copy. For commit messages, use git-commits.
 ---
 
-# Write PR
+# GitHub Pull Request
 
-Write PR descriptions a reviewer can scan in seconds: a short list of changes
-grounded in the actual diff. Use `git-commits` for the PR title and
-for grounding rules. This skill drafts or edits copy; it does not by itself
-authorize pushing, opening, or updating a pull request.
+Create PRs a reviewer can scan in seconds: a short title and a change list
+grounded in the actual diff. This skill owns the title, the body, and opening
+or updating the PR with `gh`; `git-commits` owns commit messages. Drafting copy
+does not by itself authorize pushing or opening a PR. Push, create, or edit
+only when the user asks for that step.
 
-## Style
+## Title
+
+- One imperative summary of the whole change, <= 72 chars, no trailing period.
+- Match what the repository's history or checks expect. Use the Conventional
+  Commit form (`feat(scope): ...`) only when they do; otherwise write a plain
+  summary in the same spirit.
+- In Japanese, use 体言止め, the same as the body.
+
+## Body
 
 - Express changes as a terse bullet list, one change per bullet. Add at most
   one or two lines of context above the list when the intent is not obvious
@@ -29,9 +38,22 @@ authorize pushing, opening, or updating a pull request.
   `PULL_REQUEST_TEMPLATE.md`, `docs/`, or a `PULL_REQUEST_TEMPLATE/`
   directory), fill its sections in order and keep its headings verbatim.
 - Do not add headings the template does not have. With no template, the body
-  is the change list plus optional context — still no invented headings.
+  is the change list plus optional context, still with no invented headings.
 - Mark sections that do not apply with `N/A` instead of deleting them or
   padding them with filler.
+
+## Create or update
+
+- Before `gh pr create`, confirm the branch is pushed and matches its remote.
+  Push only when the user asked to push or to open the PR.
+- New PR: `gh pr create --base <base> --title <title> --body-file <file>`.
+  Use the repository's default base unless told otherwise; use `--draft` only
+  when requested.
+- Existing PR: `gh pr edit <pr> --title <title> --body-file <file>`. Preserve
+  sections you did not change.
+- Write the body to a file and pass `--body-file`; do not inline multi-line
+  bodies in the shell.
+- Report the PR URL, and whether it was created or updated.
 
 ## Workflow
 
@@ -39,8 +61,10 @@ authorize pushing, opening, or updating a pull request.
    existing one (`gh pr view`, `gh pr diff`). Inspect the complete diff, not
    just filenames.
 2. Read the repo's PR template if present.
-3. Draft the change list per the style rules, in the language the repo's PRs
-   or the user use. Group mechanical churn (formatting, lockfiles) into one
-   bullet.
-4. Re-check every bullet against the diff before delivering: no invented
-   changes, no ですます調 in Japanese copy, no extra headings.
+3. Write the title, then draft the change list per the body rules, in the
+   language the repo's PRs or the user use. Group mechanical churn
+   (formatting, lockfiles) into one bullet.
+4. Re-check the title and every bullet against the diff: no invented changes,
+   no ですます調 in Japanese copy, no extra headings.
+5. When asked to create or update, run `gh pr create` or `gh pr edit` and
+   report the URL.
