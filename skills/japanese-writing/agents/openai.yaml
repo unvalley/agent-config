@@ -1,0 +1,4 @@
+interface:
+  display_name: "日本語ライティング"
+  short_description: "事実と声を保ち、自然な日本語に整える"
+  default_prompt: "$japanese-writing を使って、事実と声を保ちながら日本語の文章を作成または推敲する。"
