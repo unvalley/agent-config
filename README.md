@@ -61,7 +61,6 @@ just third-party
 Distribution alternatives:
 
 ```sh
-apm install -g unvalley/agent-config/skills/rust-principles
 npx skills add unvalley/agent-config
 gh skill install unvalley/agent-config/skills/design-principles
 ```
