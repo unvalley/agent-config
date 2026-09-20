@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swift Principles"
+  short_description: "Standards for writing, reviewing, and optimizing Swift"
+  default_prompt: "Use $swift-principles to judge this Swift code against the project's standards."

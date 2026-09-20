@@ -61,9 +61,9 @@ just third-party
 Distribution alternatives:
 
 ```sh
-apm install -g unvalley/agent-config/skills/rust-review
+apm install -g unvalley/agent-config/skills/rust-principles
 npx skills add unvalley/agent-config
-gh skill install unvalley/agent-config/skills/design-review
+gh skill install unvalley/agent-config/skills/design-principles
 ```
 
 `agents/` and `commands/` are Claude Code-only; install them with this

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust Principles"
+  short_description: "Standards for writing, reviewing, and optimizing Rust"
+  default_prompt: "Use $rust-principles to judge this Rust code against the project's standards."

@@ -12,8 +12,9 @@ Scope:
 - Otherwise: treat `$ARGUMENTS` as the file paths to review.
 
 Delegate to the `code-reviewer` subagent when the diff is large, so the review
-runs in its own context. Apply the `rust-review`, `ts-review`, `swift-review`,
-or `design-review` skill according to the languages present.
+runs in its own context. Apply the `rust-principles`, `typescript-principles`,
+`swift-principles`, or `design-principles` skill according to the languages
+present, and judge the code against it.
 
 Report findings grouped by severity (blocking / should-fix / nit) with
 `path:line`, the rule, and a concrete fix. End with a verdict.

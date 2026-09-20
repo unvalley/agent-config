@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Principles"
+  short_description: "Standards for building and reviewing UI and UX"
+  default_prompt: "Use $design-principles to judge this interface against the project's standards."

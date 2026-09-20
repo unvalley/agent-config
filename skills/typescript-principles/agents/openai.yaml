@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript Principles"
+  short_description: "Standards for writing and reviewing TypeScript and Node"
+  default_prompt: "Use $typescript-principles to judge this TypeScript code against the project's standards."

@@ -1,21 +1,71 @@
 ---
-name: rust-performance
-description: Measure, optimize, and review Rust runtime performance, including allocations, strings, hashing, type layout, dispatch, iteration, and build profiles. Use when the user asks to profile or speed up Rust, reduce latency or allocations, benchmark a hot path, or mentions flamegraph, criterion, CompactString, Cow, interning, bumpalo, FxHashMap, SmallVec, or throughput.
+name: rust-principles
+description: Principles for writing, reviewing, and optimizing Rust - ownership and borrowing, error handling, types and API design, unsafe soundness, async behavior, and measured performance. Use when writing or changing Rust, reviewing a Rust diff, pull request, or crate API, weighing clippy findings, lifetimes, traits, or async, and when profiling, benchmarking, or speeding up Rust, reducing latency or allocations, or considering flamegraph, criterion, CompactString, Cow, interning, bumpalo, FxHashMap, or SmallVec.
 ---
 
-# Rust Performance
+# Rust Principles
 
-Make Rust faster without breaking it. Correctness and soundness come first;
-performance never justifies a wrong answer or undefined behavior. Optimize the
-hot path, leave the cold path readable, and prove every change with a number.
+How Rust should be written here, and what to judge it against when reviewing.
+Correctness and soundness come first, then maintainability, then measured
+performance. Performance never justifies a wrong answer or undefined behavior.
 
-Resolve the requested mode before editing. For measurement, diagnosis, or
-review, capture the baseline, identify the dominant cost, and report the
-evidence and the next experiment without changing production behavior.
-Implement an optimization only when the user asks to improve or fix the
-measured path.
+Follow the repository's established conventions over these defaults where the
+two disagree. When reviewing, cite the file and line and explain the concrete
+failure mode; the review procedure and report format belong to the
+`code-reviewer` agent and the `/review` command, not here.
 
-## Workflow: measure, change one thing, measure again
+## Ownership & borrowing
+
+- Prefer borrowing (`&T`, `&str`, `&[T]`) over owned args unless ownership is needed.
+- Avoid needless `.clone()` and `.to_owned()`; flag clones in hot paths.
+- Avoid unnecessary ownership transfers at API boundaries. Follow the
+  codebase's public-API conventions instead of adding generic conversion bounds
+  mechanically.
+- Watch for lifetimes that leak implementation details into the public API.
+
+## Error handling
+
+- Follow the repository's error model. Preserve typed errors where callers need
+  to branch and add context where failures cross subsystem boundaries.
+- No `.unwrap()` / `.expect()` on fallible paths outside tests, `main`, or cases
+  with a proven invariant (document it with a comment).
+- Use `?` over manual `match` on `Result`. Prefer `Result<T, E>` over panics for
+  recoverable errors.
+- Check that error types are `Send + Sync + 'static` when they cross threads.
+
+## Types & API design
+
+- Make illegal states unrepresentable: enums over bool flags, newtypes over
+  primitive obsession, `NonZeroU32` / `&[T]` where invariants apply.
+- Derive `Debug`; derive `Clone`/`PartialEq`/`Eq`/`Hash` only when needed.
+- Accept generic bounds (`impl Iterator`, `impl Trait`) at the boundary; return
+  concrete or `impl Trait`. Avoid leaking `Box<dyn ...>` without reason.
+- Honor API guidelines: constructors named `new`/`with_*`, `From`/`TryFrom`,
+  `#[must_use]` on builders and pure returns.
+
+## Unsafe
+
+- Every `unsafe` block needs a `// SAFETY:` comment justifying each invariant.
+- Verify no aliasing violations, no use-after-free, correct `Send`/`Sync` impls.
+- Prefer safe abstractions; flag unsafe that a safe API would replace.
+- `unsafe` for speed needs a proven bottleneck and a `// SAFETY:` proof; a safe
+  version is almost always fast enough.
+
+## Async & concurrency
+
+- No blocking calls (`std::fs`, `std::thread::sleep`, heavy CPU) inside async fns
+  on the runtime; use the runtime's spawn_blocking or async equivalents.
+- Hold `Mutex`/`RwLock` guards across `.await` only when intended; prefer not to.
+- Check `Arc`/`Mutex` granularity and for obvious deadlock ordering.
+
+## Performance
+
+Optimize the hot path, leave the cold path readable, and prove every change
+with a number. Flag allocation, copying, hashing, dispatch, or contention only
+when the code is plausibly hot or the cost scales with unbounded input. An
+optimization is not a fix without evidence that the path matters.
+
+### Measure before you change
 
 1. **Establish a baseline before changing production behavior.** Add minimal,
    isolated instrumentation or a benchmark when needed, then find the real hot
@@ -29,15 +79,19 @@ measured path.
    profiles, target CPU, features, data, and environment identical between
    baseline and after runs.
 3. **Change one variable**, re-run the same benchmark, keep the win or revert.
-   Record the before/after numbers in the PR.
+   Record the before/after numbers: scenario, metric, baseline and after with
+   p50/p95 and sample count, the one intervention, the evidence, and the
+   tradeoffs. Say when no meaningful win was found.
 4. **Guard durable hot paths** with a repeatable benchmark when it will remain
    stable. Add a target-aware size assertion only when layout is an intentional
    invariant rather than an incidental compiler result.
 
-## Optimization candidates
+Do not claim a speedup from code shape, fewer lines, or intuition. Reject "this
+is probably faster" without a benchmark; readability loss must buy a real,
+measured win. Micro-optimizing cold code wastes effort and harms clarity.
 
-Use the following only after profiling identifies the corresponding cost. They
-are experiment ideas, not default replacements.
+The candidates below are experiment ideas to reach for only after profiling
+identifies the corresponding cost. They are not default replacements.
 
 ### Allocation
 
@@ -53,6 +107,7 @@ are experiment ideas, not default replacements.
   heap only when it grows.
 - **Avoid `collect()` into a throwaway `Vec`**: chain iterators, or
   `extend`/`for` into an existing buffer.
+- Cloning to dodge the borrow checker is a hidden allocation - fix the lifetimes.
 
 ### Strings
 
@@ -96,7 +151,8 @@ are experiment ideas, not default replacements.
 
 - **`#[inline]`** on small, hot functions that cross crate boundaries (the
   optimizer may need an inline hint or LTO to see). Test runtime and code size;
-  reserve `#[inline(always)]` for rare cases supported by evidence.
+  reserve `#[inline(always)]` for rare cases supported by evidence - everywhere
+  it bloats code and can slow things down.
 - **Prefer static dispatch in hot loops**: generics/`impl Trait` monomorphize;
   `dyn Trait` adds a vtable indirection per call. Use enum dispatch over
   `Box<dyn>` when the set of types is closed.
@@ -111,9 +167,10 @@ are experiment ideas, not default replacements.
   matter.
 - Hoist invariant work out of loops; precompute outside.
 
-### Build profile (last-mile, whole-program)
+### Build profile
 
-Treat settings such as these as experiments, not a universal release profile:
+Treat settings such as these as whole-program experiments, not a universal
+release profile:
 
 ```toml
 [profile.release]
@@ -130,43 +187,3 @@ panic         = "abort"   # no unwind tables; changes panic semantics
 - Tradeoffs: `lto`/`codegen-units=1` lengthen build time; `panic = "abort"`
   means destructors don't run on panic and `catch_unwind` won't catch - confirm
   that's acceptable.
-
-## Pitfalls
-
-- **No measurement, no change.** Reject "this is probably faster" without a
-  benchmark; readability loss must buy a real, measured win.
-- `#[inline(always)]` everywhere bloats code and can slow things down.
-- Cloning to dodge the borrow checker is a hidden allocation - fix the lifetimes.
-- `unsafe` for speed needs a proven bottleneck and a `// SAFETY:` proof; a safe
-  version is almost always fast enough. (See `rust-review` for soundness.)
-- Micro-optimizing cold code wastes effort and harms clarity.
-
-## Output format
-
-When reviewing for performance, for each finding:
-
-```
-[hot|warm|cold] path/to/file.rs:LINE - <what costs here>
-cost: <allocation / hash / copy / indirection, and why it's on the hot path>
-experiment: <one change that targets the measured cost>
-measure: <benchmark or profile to confirm the win>
-```
-
-End with the top 1-3 changes by expected impact, and explicitly note anything
-that needs a benchmark before committing.
-
-When implementing an optimization, report each experiment:
-
-```text
-scenario: <operation, input size, build profile, and hardware>
-metric: <duration, throughput, allocations, memory, or other unit>
-baseline: p50 <value>, p95 <value>, n=<count>
-after: p50 <value>, p95 <value>, n=<count>
-change: <one measured intervention>
-evidence: <benchmark command, profile, or trace>
-tradeoffs: <memory, binary size, complexity, behavior, or none observed>
-decision: keep | revert | inconclusive
-```
-
-Do not claim a speedup from code shape, fewer lines, or intuition. Say when no
-meaningful win was found.

@@ -15,13 +15,22 @@ the code. You never edit files; you report.
    `git diff` (and `git diff --cached` for staged). Fall back to `git diff main...HEAD`
    on a feature branch.
 2. Read the changed files and enough surrounding context to judge correctness.
-3. Apply the matching review skill via the Skill tool based on the languages
-   present:
-   - Rust -> the `rust-review` skill
-   - TypeScript / JavaScript / Node -> the `ts-review` skill
-   - Swift / SwiftUI / AppKit -> the `swift-review` skill
-   - UI / CSS / components -> the `design-review` skill
+3. Apply the matching principles skill via the Skill tool based on the
+   languages present, and judge the code against it:
+   - Rust -> the `rust-principles` skill
+   - TypeScript / JavaScript / Node -> the `typescript-principles` skill
+   - Swift / SwiftUI / AppKit -> the `swift-principles` skill
+   - UI / CSS / components -> the `design-principles` skill
 4. Run available static checks when cheap and relevant (clippy, tsc, linter).
+   Use the checks the repository documents, with the package, target, and
+   feature set it supports, rather than a generic invocation.
+
+Report only findings supported by a reachable failure, a violated invariant, a
+diagnostic, or a concrete maintenance cost. Do not infer a contract from names
+or style alone: when required behavior, reachability, or caller expectations
+cannot be established, report the uncertainty as a question or residual risk
+rather than a finding. Separate new issues from pre-existing ones when the base
+revision is available.
 
 ## What to report
 
