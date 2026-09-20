@@ -5,64 +5,37 @@ Portable skills and agents for AI coding agents.
 ## Install
 
 ```sh
-just install              # all agents plus third-party skills and git hooks
-just install claude       # claude | codex | all
-just status
-just uninstall
-```
-
-The Rust installer symlinks this repository's assets so local edits apply
-immediately. Claude Code receives `skills/` and `agents/`; Codex receives
-`skills/` through `~/.agents/skills`.
-
-Use the CLI directly when needed:
-
-```sh
-cargo run -- install -t all
-cargo run -- status
-cargo run -- uninstall
-```
-
-Available flags: `--copy`, `--force`, and `--dry-run`.
-
-Codex configuration (`~/.codex/config.toml`) and the global skills lock
-(`~/.agents/.skill-lock.json`) belong in dotfiles, not this repository.
-
-## New machine
-
-```sh
-chezmoi init --apply unvalley
+chezmoi init --apply unvalley                              # new machine only
 git clone https://github.com/unvalley/agent-config.git
 cd agent-config
 just install
 ```
 
 `just install` links this repository's assets, restores third-party skills from
-the skills.sh lock, and installs the configured git hooks.
+the skills.sh lock, and installs the git hooks. `just --list` has the rest:
+`status`, `uninstall`, `third-party`, and `validate`.
+
+Assets are symlinked, so local edits apply immediately. Claude Code receives
+`skills/` and `agents/`; Codex receives `skills/` through `~/.agents/skills`.
+The installer is a Rust CLI behind those recipes; `cargo run -- install --help`
+covers its `--copy`, `--force`, and `--dry-run` flags.
+
+Codex configuration (`~/.codex/config.toml`) and the global skills lock
+(`~/.agents/.skill-lock.json`) belong in dotfiles, not here.
 
 ## Skills
 
-This repository's skills are symlinked from `skills/`. Third-party skills are
-managed by [skills.sh](https://github.com/vercel-labs/skills) and restored by
-`just third-party`.
+Third-party skills are managed by
+[skills.sh](https://github.com/vercel-labs/skills) and restored by
+`just third-party`. Run `chezmoi add ~/.agents/.skill-lock.json` after changing
+them so the lock stays in dotfiles.
 
-```sh
-npx skills add <owner>/<repo> -g
-npx skills remove <name>
-npx skills list -g
-npx skills update -g
-chezmoi add ~/.agents/.skill-lock.json
-just third-party
-```
-
-Distribution alternatives:
+This repository's own skills can also be installed elsewhere:
 
 ```sh
 npx skills add unvalley/agent-config
 gh skill install unvalley/agent-config/skills/design-principles
 ```
-
-`agents/` is Claude Code-only; install it with this repository's CLI.
 
 ## Authoring a skill
 
