@@ -2,7 +2,6 @@
 
 Portable configuration for AI coding agents.
 
-- Follow [`rules/`](rules/); project instructions take precedence.
 - Use the matching [`skills/`](skills/) instructions when a task triggers one.
 - Claude Code can also use [`agents/`](agents/) and [`commands/`](commands/).
 

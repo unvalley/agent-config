@@ -1,6 +1,6 @@
 # agent-config
 
-Portable rules, skills, agents, and commands for AI coding agents.
+Portable skills, agents, and commands for AI coding agents.
 
 See [`docs/ai-native/`](docs/ai-native/README.md) for the staged approach to
 closed-loop agent execution.
