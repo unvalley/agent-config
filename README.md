@@ -5,15 +5,16 @@ Portable skills and agents for AI coding agents.
 ## Install
 
 ```sh
-chezmoi init --apply unvalley                              # new machine only
 git clone https://github.com/unvalley/agent-config.git
 cd agent-config
 just install
 ```
 
 `just install` links this repository's assets, restores third-party skills from
-the skills.sh lock, and installs the git hooks. `just --list` has the rest:
-`status`, `uninstall`, `third-party`, and `validate`.
+the skills.sh lock, and installs the git hooks. On a new machine run
+`chezmoi init --apply unvalley` first, so the dotfiles and that lock are in
+place. `just --list` has the rest: `status`, `uninstall`, `third-party`, and
+`validate`.
 
 Assets are symlinked, so local edits apply immediately. Claude Code receives
 `skills/` and `agents/`; Codex receives `skills/` through `~/.agents/skills`.
