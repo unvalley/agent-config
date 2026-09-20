@@ -11,8 +11,9 @@ concrete fix, not taste alone. Distinguish blocking issues (broken,
 inaccessible) from polish (taste, delight).
 
 Explicit user direction, a supplied reference, and the product's design system
-all come before the defaults below. When reviewing, the procedure and report
-format belong to the `code-reviewer` agent and the `/review` command, not here.
+all come before the defaults below. When reviewing, tie each note to a
+principle above and a concrete fix, and raise what the design does not
+establish as a question rather than a finding.
 
 ## Visual hierarchy
 

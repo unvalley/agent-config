@@ -12,8 +12,8 @@ maintainability, then measured performance.
 
 Follow the repository's established conventions over these defaults where the
 two disagree. When reviewing, cite the file and line and explain the concrete
-failure mode; the review procedure and report format belong to the
-`code-reviewer` agent and the `/review` command, not here.
+failure mode, and raise what the code does not establish as a question rather
+than a finding.
 
 ## Memory & ownership
 
