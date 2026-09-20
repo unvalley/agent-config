@@ -1,6 +1,6 @@
 //! Installs this repository's agent assets into local AI agent directories.
 //!
-//! Skills, subagents, and slash commands are symlinked into the target agent's
+//! Skills and subagents are symlinked into the target agent's
 //! config directory, so edits in this repo are picked up live. Use `--copy` to
 //! copy instead. The repository path is baked in at build time, so the command
 //! works from any working directory.
@@ -20,7 +20,7 @@ const REPO_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 #[derive(Bpaf, Clone, Debug)]
 #[bpaf(options, version)]
-/// Install this repo's skills, agents, and commands into local AI agent dirs.
+/// Install this repo's skills and agents into local AI agent dirs.
 enum Cli {
     /// Link (or copy) assets into the target agent directories
     #[bpaf(command)]
@@ -125,8 +125,8 @@ impl Target {
     /// Asset kinds this agent understands.
     fn kinds(self) -> &'static [AssetKind] {
         match self {
-            // Claude Code reads skills, subagents, and slash commands.
-            Target::Claude => &[AssetKind::Skills, AssetKind::Agents, AssetKind::Commands],
+            // Claude Code reads skills and subagents.
+            Target::Claude => &[AssetKind::Skills, AssetKind::Agents],
             // Codex consumes skills (from ~/.agents/skills) and reads AGENTS.md
             // per-project, so only skills are installed globally.
             Target::Codex => &[AssetKind::Skills],
@@ -145,7 +145,6 @@ impl Target {
 enum AssetKind {
     Skills,
     Agents,
-    Commands,
 }
 
 impl AssetKind {
@@ -154,15 +153,14 @@ impl AssetKind {
         match self {
             AssetKind::Skills => "skills",
             AssetKind::Agents => "agents",
-            AssetKind::Commands => "commands",
         }
     }
 
-    /// A skill is a directory containing SKILL.md; agents/commands are .md files.
+    /// A skill is a directory containing SKILL.md; an agent is a .md file.
     fn matches(self, path: &Path) -> bool {
         match self {
             AssetKind::Skills => path.is_dir() && path.join("SKILL.md").is_file(),
-            AssetKind::Agents | AssetKind::Commands => {
+            AssetKind::Agents => {
                 path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md")
             }
         }

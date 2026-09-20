@@ -1,4 +1,4 @@
-# agent-config — link skills/agents/commands into local AI agent dirs.
+# agent-config — link skills and agents into local AI agent dirs.
 # Run `just --list` to see recipes.
 
 # The installer CLI, run from source (no install step needed).

@@ -1,6 +1,6 @@
 # agent-config
 
-Portable skills, agents, and commands for AI coding agents.
+Portable skills and agents for AI coding agents.
 
 See [`docs/ai-native/`](docs/ai-native/README.md) for the staged approach to
 closed-loop agent execution.
@@ -15,8 +15,8 @@ just uninstall
 ```
 
 The Rust installer symlinks this repository's assets so local edits apply
-immediately. Claude Code receives `skills/`, `agents/`, and `commands/`; Codex
-receives `skills/` through `~/.agents/skills`.
+immediately. Claude Code receives `skills/` and `agents/`; Codex receives
+`skills/` through `~/.agents/skills`.
 
 Use the CLI directly when needed:
 
@@ -66,8 +66,7 @@ npx skills add unvalley/agent-config
 gh skill install unvalley/agent-config/skills/design-principles
 ```
 
-`agents/` and `commands/` are Claude Code-only; install them with this
-repository's CLI.
+`agents/` is Claude Code-only; install it with this repository's CLI.
 
 ## Authoring a skill
 
