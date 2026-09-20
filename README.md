@@ -2,9 +2,6 @@
 
 Portable skills and agents for AI coding agents.
 
-See [`docs/ai-native/`](docs/ai-native/README.md) for the staged approach to
-closed-loop agent execution.
-
 ## Install
 
 ```sh
