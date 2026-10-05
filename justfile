@@ -44,3 +44,11 @@ uninstall target="all":
 # Validate a skill against the agentskills.io spec, e.g. `just validate rust-principles`.
 validate skill:
     npx skills-ref validate ./skills/{{skill}}
+
+# Run one skill's evals with and without the skill, e.g. `just eval git-commits --runs 1`.
+eval skill *args:
+    claude plugin eval . --no-publish --case '{{skill}}/*' {{args}}
+
+# Run every skill's evals; flags pass through to `claude plugin eval`.
+eval-all *args:
+    claude plugin eval . --no-publish {{args}}
