@@ -66,4 +66,5 @@ just eval-all           # every skill
 Each case runs with and without its skills, so the report shows what the skill
 adds. Flags pass through to `claude plugin eval`, such as `--runs 1` or
 `--tag routing`. Runs use your Claude Code login, and reports stay local in
-`evals/results/`.
+`evals/results/`. The latest scores are in
+[`skills/benchmark.md`](skills/benchmark.md).
