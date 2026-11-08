@@ -1,0 +1,9 @@
+{
+  "name": "image-to-ascii-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Only for installing sharp beside convert.mjs when the current project has none.",
+  "dependencies": {
+    "sharp": "^0.35.0"
+  }
+}
