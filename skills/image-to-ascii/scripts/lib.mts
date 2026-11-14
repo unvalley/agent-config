@@ -1,4 +1,4 @@
-// Shared by convert.mjs and hues.mjs.
+// Shared by convert.mts and hues.mts.
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /** sharp from the current directory (the site repo has it) or beside these scripts. */
-export function loadSharp() {
+export function loadSharp(): typeof import("sharp").default {
   for (const from of [process.cwd(), here]) {
     try {
       return createRequire(path.join(from, "noop.js"))("sharp");
@@ -18,7 +18,7 @@ export function loadSharp() {
   process.exit(2);
 }
 
-export const hueOf = (r, g, b) => {
+export const hueOf = (r: number, g: number, b: number) => {
   const hi = Math.max(r, g, b);
   const d = hi - Math.min(r, g, b);
   if (!d) return 0;
@@ -27,12 +27,12 @@ export const hueOf = (r, g, b) => {
 };
 
 /** A vivid pixel: chroma at least 70, and not near black or white. */
-export const isVivid = (r, g, b) => {
+export const isVivid = (r: number, g: number, b: number) => {
   const hi = Math.max(r, g, b);
   const lo = Math.min(r, g, b);
   const l = (hi + lo) / 510;
   return hi - lo >= 70 && l > 0.15 && l < 0.85;
 };
 
-export const hex = (c) =>
+export const hex = (c: number[]) =>
   `#${c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("")}`;

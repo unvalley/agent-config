@@ -5,7 +5,7 @@
 // or a line glyph (/ \ | - _) when a strong edge runs through it, and a
 // colour from a small k-means palette with a [light page, dark page] pair.
 //
-//   node convert.mjs <image> <outDir> [options]     (--help lists them)
+//   node convert.mts <image> <outDir> [options]     (--help lists them)
 //
 // Writes to outDir: ascii.json, drawing.ts (the site's AsciiDrawing),
 // index.html (standalone, selectable text), light.png, dark.png and
@@ -13,10 +13,34 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { hex, hueOf, isVivid, loadSharp } from "./lib.mjs";
+import { hex, hueOf, isVivid, loadSharp } from "./lib.mts";
+
+type RGB = number[];
+type Page = "light" | "dark";
+type Region = { left: number; top: number; width: number; height: number };
+type Sample = { rgb: RGB; u: number; v: number; opaque: boolean };
+type Named = { j: number; n: number; colour: RGB };
+type Cell = {
+  r: number;
+  c: number;
+  coverage: number;
+  colour: RGB;
+  dark: number;
+  strength: number;
+  coherence: number;
+  edge: number;
+  my: number;
+  vivid: RGB | null;
+  named: Named | null;
+  bin?: number;
+  accent?: boolean;
+  glyph: string;
+  xc: number[];
+  k: number;
+};
 
 // ---------------------------------------------------------------- options
-const PRESETS = {
+const PRESETS: Record<string, Record<string, string>> = {
   // Exactly the settings the garland on unvalley.me was made with.
   garland: {
     width: "1000",
@@ -51,7 +75,7 @@ const DEFAULTS = {
   "palette-space": "oklab",
   "edge-coherence": "0.25",
 };
-const HELP = `Usage: node convert.mjs <image> <outDir> [options]
+const HELP = `Usage: node convert.mts <image> <outDir> [options]
 
 Size
   --width <px>          Width of the drawing in CSS px (default 672). Columns = width / cell width.
@@ -145,13 +169,13 @@ if (given.preset && !PRESETS[given.preset]) {
   console.error(`Unknown preset "${given.preset}". Known: ${Object.keys(PRESETS).join(", ")}`);
   process.exit(1);
 }
-const opt = { ...DEFAULTS, ...(PRESETS[given.preset] ?? {}), ...given };
+const opt = { ...DEFAULTS, ...(given.preset ? PRESETS[given.preset] : {}), ...given };
 const sharp = loadSharp();
 const [input, outDir] = positionals;
-const fail = (message) => {
+function fail(message: string): never {
   console.error(message);
   process.exit(1);
-};
+}
 if (!existsSync(input)) fail(`No such image: ${input}`);
 
 const [CELL_W, CELL_H] = opt.cell.split("x").map(Number);
@@ -183,12 +207,12 @@ const ACCENT_HUES = (opt["accent-hue"] ?? [])
 const ACCENT = Number(opt.accent) || (ACCENT_HUES.length ? 0.15 : 0);
 
 // ---------------------------------------------------------------- colour
-function rgbOf(h) {
+function rgbOf(h: string): RGB {
   const m = /^#?([0-9a-f]{6})$/i.exec(h);
   if (!m) fail(`Not a #rrggbb colour: "${h}"`);
   return [0, 2, 4].map((i) => Number.parseInt(m[1].slice(i, i + 2), 16));
 }
-function rgbToHsl([r, g, b]) {
+function rgbToHsl([r, g, b]: RGB): number[] {
   r /= 255;
   g /= 255;
   b /= 255;
@@ -198,18 +222,18 @@ function rgbToHsl([r, g, b]) {
   if (max === min) return [0, 0, l];
   const d = max - min;
   const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h;
+  let h: number;
   if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
   else if (max === g) h = (b - r) / d + 2;
   else h = (r - g) / d + 4;
   return [h * 60, s, l];
 }
-function hslToRgb([h, s, l]) {
+function hslToRgb([h, s, l]: number[]): RGB {
   h /= 360;
   if (s === 0) return [l, l, l].map((v) => Math.round(v * 255));
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
   const p = 2 * l - q;
-  const f = (t) => {
+  const f = (t: number) => {
     if (t < 0) t += 1;
     if (t > 1) t -= 1;
     if (t < 1 / 6) return p + (q - p) * 6 * t;
@@ -219,15 +243,15 @@ function hslToRgb([h, s, l]) {
   };
   return [f(h + 1 / 3), f(h), f(h - 1 / 3)].map((v) => Math.round(v * 255));
 }
-const lum = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-const chroma = (c) => Math.max(...c) - Math.min(...c);
+const lum = ([r, g, b]: RGB) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+const chroma = (c: RGB) => Math.max(...c) - Math.min(...c);
 // OKLab (Björn Ottosson), for perceptual distances.
-const toLin = (v) => {
+const toLin = (v: number) => {
   v /= 255;
   return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 };
-const fromLin = (v) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
-function oklab([r, g, b]) {
+const fromLin = (v: number) => Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
+function oklab([r, g, b]: RGB): number[] {
   const R = toLin(r);
   const G = toLin(g);
   const B = toLin(b);
@@ -240,7 +264,7 @@ function oklab([r, g, b]) {
     0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
   ];
 }
-function fromOklab([L, a, b]) {
+function fromOklab([L, a, b]: number[]): RGB {
   const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
   const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
@@ -254,7 +278,7 @@ function fromOklab([L, a, b]) {
 // with colourfulness counted twice, since a vivid orange reads as more ink
 // than a grey of the same lightness.
 const CHROMA_WEIGHT = 2;
-const inkAmount = (rgb, ref) => {
+const inkAmount = (rgb: RGB, ref: RGB) => {
   const p = oklab(rgb);
   const q = oklab(ref);
   return Math.hypot(p[0] - q[0], CHROMA_WEIGHT * Math.hypot(p[1] - q[1], p[2] - q[2]));
@@ -268,11 +292,11 @@ const hueMaps = (opt["hue-map"] ?? [])
     if (!x) fail(`--hue-map takes a-b:c-d, not "${m}"`);
     return x.slice(1).map(Number);
   });
-const inRange = (h, a, b) => (a <= b ? h >= a && h <= b : h >= a || h <= b);
-const span = (a, b) => (b - a + 360) % 360 || 360;
+const inRange = (h: number, a: number, b: number) => (a <= b ? h >= a && h <= b : h >= a || h <= b);
+const span = (a: number, b: number) => (b - a + 360) % 360 || 360;
 
 /** The recolouring of the source, before shading and palette. */
-function recolour(rgb) {
+function recolour(rgb: RGB): RGB {
   if (opt.recolour === "garland") {
     // Violets and mauves become sky blue; leaves get a little fresher.
     const [h, s, l] = rgbToHsl(rgb);
@@ -296,30 +320,30 @@ function recolour(rgb) {
   return rgb;
 }
 // Thin glyphs need more colour on a light page and more light on a dark one.
-const lightVariant = (rgb) => {
+const lightVariant = (rgb: RGB) => {
   const [h, s, l] = rgbToHsl(rgb);
   const blue = (h >= 180 && h <= 230) || h >= 300;
   return hslToRgb([h, Math.min(1, s * (blue ? 1.25 : 1.0)), l > 0.55 ? l * 0.8 : l * 0.93]);
 };
-const darkVariant = (rgb) => {
+const darkVariant = (rgb: RGB) => {
   const [h, s, l] = rgbToHsl(rgb);
   return hslToRgb([h, Math.min(1, s * 1.05), Math.min(0.9, l * 1.05 + 0.04)]);
 };
 
 // WCAG contrast, for checking the palette against the page.
-const PAGE = { light: [255, 255, 255], dark: [10, 10, 10] };
-const linear = (v) => {
+const PAGE: Record<Page, RGB> = { light: [255, 255, 255], dark: [10, 10, 10] };
+const linear = (v: number) => {
   v /= 255;
   return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 };
-const relLum = ([r, g, b]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-const contrast = (a, b) => {
+const relLum = ([r, g, b]: RGB) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+const contrast = (a: RGB, b: RGB) => {
   const [x, y] = [relLum(a), relLum(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 };
 // Toward black on a light page and toward white on a dark one, so a cream
 // turns warm grey rather than mustard (darkening in HSL keeps saturation).
-function reach(rgb, page, target) {
+function reach(rgb: RGB, page: Page, target: number): RGB {
   if (!(target > 0) || contrast(rgb, PAGE[page]) >= target) return rgb;
   let out = rgb;
   for (let t = 0.01; t <= 1 && contrast(out, PAGE[page]) < target; t += 0.01)
@@ -335,15 +359,15 @@ const source = await base
   .toColourspace("srgb")
   .png()
   .toBuffer()
-  .catch((error) => fail(`Cannot read ${input} as an image: ${error.message}`));
+  .catch((error: Error) => fail(`Cannot read ${input} as an image: ${error.message}`));
 const meta = await sharp(source).metadata();
 
 // Look at the border to decide what counts as ink when asked to: its
 // median colour, how much is transparent, and how much of it is far from
 // that colour (a picture that runs off the edge has no dominant colour).
-const FULL = { left: 0, top: 0, width: meta.width, height: meta.height };
-const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) / 255 / Math.sqrt(3);
-async function borderOf(region, inset = 0) {
+const FULL: Region = { left: 0, top: 0, width: meta.width, height: meta.height };
+const distance = (a: RGB, b: RGB) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) / 255 / Math.sqrt(3);
+async function borderOf(region: Region, inset = 0) {
   const W0 = 96;
   const H0 = Math.max(8, Math.round((region.height / region.width) * W0));
   const { data } = await sharp(source)
@@ -352,20 +376,20 @@ async function borderOf(region, inset = 0) {
     .resize(W0, H0, { fit: "fill" })
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const px = [];
+  const px: number[] = [];
   for (let x = inset; x < W0 - inset; x++) px.push(inset * W0 + x, (H0 - 1 - inset) * W0 + x);
   for (let y = inset + 1; y < H0 - 1 - inset; y++) px.push(y * W0 + inset, y * W0 + W0 - 1 - inset);
   const rgba = px.map((i) => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3]]);
   const at = px.map((i) => [((i % W0) + 0.5) / W0, (Math.floor(i / W0) + 0.5) / H0]);
   const transparent = rgba.filter((p) => p[3] < 250).length / rgba.length;
   const opaque = rgba.filter((p) => p[3] >= 250);
-  const median = (k) => {
+  const median = (k: number) => {
     const v = opaque.map((p) => p[k]).sort((a, b) => a - b);
     return v.length ? v[Math.floor(v.length / 2)] : 255;
   };
   const colour = [median(0), median(1), median(2)];
-  const far = (d) => opaque.filter((p) => distance(p, colour) > d).length / Math.max(1, opaque.length);
-  const samples = rgba.map((p, k) => ({ rgb: p.slice(0, 3), u: at[k][0], v: at[k][1], opaque: p[3] >= 250 }));
+  const far = (d: number) => opaque.filter((p) => distance(p, colour) > d).length / Math.max(1, opaque.length);
+  const samples: Sample[] = rgba.map((p, k) => ({ rgb: p.slice(0, 3), u: at[k][0], v: at[k][1], opaque: p[3] >= 250 }));
   return { transparent, colour, far: far(0.12), uneven: far(0.07), samples: samples.filter((q) => q.opaque) };
 }
 // A frame or mat: a thin margin of one colour on all four sides, and a
@@ -378,7 +402,7 @@ const frame = await (async () => {
     .toBuffer({ resolveWithObject: true })
     .catch(() => null);
   if (!t) return null;
-  const inner = {
+  const inner: Region = {
     left: -(t.info.trimOffsetLeft ?? 0),
     top: -(t.info.trimOffsetTop ?? 0),
     width: t.info.width,
@@ -406,11 +430,11 @@ const border = await borderOf(region, 3);
 // Transparency is judged at the very edge, which a cut-out never fills.
 const edgeTransparent = (await borderOf(region, 0)).transparent;
 // White paper is not ink by the paper rule; cream, aged or tinted paper is.
-const paperIsInk = (c) => {
+const paperIsInk = (c: RGB) => {
   const [, s] = rgbToHsl(c);
   return 1 - lum(c) > 0.1 || (s > 0.25 && 1 - lum(c) > 0.04);
 };
-let INK = opt.ink;
+let INK: string = opt.ink;
 if (INK === "auto") {
   if (meta.hasAlpha && edgeTransparent > 0.5) INK = "alpha";
   else if (border.far > 0.8) INK = "all";
@@ -427,8 +451,8 @@ if (!["paper", "chroma", "alpha", "background", "all"].includes(INK))
 // where the subject runs off the edge.
 const ground = (() => {
   if (INK !== "background" || border.samples.length < 12) return null;
-  const basis = (u, v) => [1, u, v, u * v, u * u, v * v];
-  const fit = (pts) => {
+  const basis = (u: number, v: number) => [1, u, v, u * v, u * u, v * v];
+  const fit = (pts: Sample[]) => {
     const n = 6;
     const ata = Array.from({ length: n }, () => new Float64Array(n));
     const atb = [0, 1, 2].map(() => new Float64Array(n));
@@ -455,7 +479,7 @@ const ground = (() => {
       return m.map((row, i) => (row[i] ? row[n] / row[i] : 0));
     });
   };
-  const evalAt = (coef, u, v) => {
+  const evalAt = (coef: number[][], u: number, v: number) => {
     const b = basis(u, v);
     return coef.map((c) => Math.max(0, Math.min(255, c.reduce((t, w, i) => t + w * b[i], 0))));
   };
@@ -468,12 +492,12 @@ const ground = (() => {
     inliers = next;
     coef = fit(inliers);
   }
-  return (u, v) => evalAt(coef, Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v)));
+  return (u: number, v: number) => evalAt(coef, Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v)));
 })();
 
 // The box to draw: the picture (inside any frame) trimmed to its ink, with a
 // small margin.
-async function boxOf() {
+async function boxOf(): Promise<Region> {
   if (INK === "all") return region;
   const framed = region !== FULL;
   let pipeline = INK === "alpha" ? sharp(source) : sharp(source).flatten({ background: "#ffffff" });
@@ -528,23 +552,23 @@ const vividBuf = AF
       .raw()
       .toBuffer()
   : null;
-const px = (x, y) => {
+const px = (x: number, y: number): RGB => {
   const i = (Math.min(SH - 1, Math.max(0, y)) * SW + Math.min(SW - 1, Math.max(0, x))) * 3;
   return [data[i], data[i + 1], data[i + 2]];
 };
 const L = new Float32Array(SW * SH);
 for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) L[y * SW + x] = lum(px(x, y));
-const Lat = (x, y) => L[Math.min(SH - 1, Math.max(0, y)) * SW + Math.min(SW - 1, Math.max(0, x))];
+const Lat = (x: number, y: number) => L[Math.min(SH - 1, Math.max(0, y)) * SW + Math.min(SW - 1, Math.max(0, x))];
 
 // Where a sample (x, y) of the grid lies in the region the ground was fitted over.
-const groundAt = (x, y) =>
+const groundAt = (x: number, y: number): RGB =>
   ground
     ? ground(
         (box.left + ((x + 0.5) / SW) * box.width - region.left) / region.width,
         (box.top + ((y + 0.5) / SH) * box.height - region.top) / region.height,
       )
     : border.colour;
-const rawInk = (x, y) => {
+const rawInk = (x: number, y: number) => {
   const c = px(x, y);
   switch (INK) {
     case "paper":
@@ -552,7 +576,7 @@ const rawInk = (x, y) => {
     case "chroma":
       return lum(c) < 0.955 || chroma(c) >= 9;
     case "alpha":
-      return alpha[y * SW + x] >= 128;
+      return alpha![y * SW + x] >= 128;
     case "background": {
       const [r, g, b] = groundAt(x, y);
       const d = Math.sqrt(0.3 * (c[0] - r) ** 2 + 0.59 * (c[1] - g) ** 2 + 0.11 * (c[2] - b) ** 2) / 255;
@@ -568,11 +592,11 @@ if (opt.fill && INK !== "all") {
   // Paper is what can be reached from the border without crossing ink; any
   // other pale pixel is a highlight inside a shape, so it counts as ink.
   const paper = new Uint8Array(SW * SH);
-  const stack = [];
+  const stack: number[] = [];
   for (let x = 0; x < SW; x++) stack.push(x, (SH - 1) * SW + x);
   for (let y = 0; y < SH; y++) stack.push(y * SW, y * SW + SW - 1);
   while (stack.length) {
-    const i = stack.pop();
+    const i = stack.pop()!;
     if (paper[i] || inkMask[i]) continue;
     paper[i] = 1;
     const x = i % SW;
@@ -584,10 +608,10 @@ if (opt.fill && INK !== "all") {
   }
   for (let i = 0; i < SW * SH; i++) if (!paper[i]) inkMask[i] = 1;
 }
-const isInk = (x, y) => inkMask[y * SW + x] === 1;
+const isInk = (x: number, y: number) => inkMask[y * SW + x] === 1;
 
 // ---------------------------------------------------------------- cells
-const cells = [];
+const cells: (Cell | null)[] = [];
 for (let r = 0; r < ROWS; r++) {
   for (let c = 0; c < COLS; c++) {
     let n = 0;
@@ -626,9 +650,9 @@ for (let r = 0; r < ROWS; r++) {
     }
     const colour = recolour(sum.map((v) => v / n));
     // The cell's vivid pixels, if they are at least --accent of its ink.
-    let vivid = null;
-    let named = null;
-    if (AF) {
+    let vivid: RGB | null = null;
+    let named: Named | null = null;
+    if (vividBuf) {
       let vn = 0;
       const vsum = [0, 0, 0];
       const hn = ACCENT_HUES.map(() => 0);
@@ -667,10 +691,25 @@ for (let r = 0; r < ROWS; r++) {
     // How much the gradients agree on one direction: high along a stem or an
     // outline, low in texture.
     const coherence = jxx + jyy > 0 ? Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (jxx + jyy) : 0;
-    cells.push({ r, c, coverage, colour, dark, strength, coherence, edge: theta + 90, my: my / n, vivid, named });
+    cells.push({
+      r,
+      c,
+      coverage,
+      colour,
+      dark,
+      strength,
+      coherence,
+      edge: theta + 90,
+      my: my / n,
+      vivid,
+      named,
+      glyph: "",
+      xc: [],
+      k: -1,
+    });
   }
 }
-const pts = cells.filter(Boolean);
+const pts = cells.filter((cell): cell is Cell => cell !== null);
 // A vivid hue that stands out from the cells around it and is rare in the
 // drawing is an accent: a poppy's red among grass, a red dot on a black
 // body, gold stamens. Its cells take the vivid colour (an average would turn
@@ -678,9 +717,9 @@ const pts = cells.filter(Boolean);
 // Vivid colours that fill whole areas, like a flower's petals or a
 // painting's greens, keep plain averages, as the garland does.
 // Hue bins centred on 0°, 30°, …, so red is one bin, not split at 360°.
-const binOf = (rgb) => Math.floor(((rgbToHsl(rgb)[0] + 15) % 360) / 30);
+const binOf = (rgb: RGB) => Math.floor(((rgbToHsl(rgb)[0] + 15) % 360) / 30);
 for (const p of pts) if (p.vivid) p.bin = binOf(p.vivid);
-const standsOut = (p) => {
+const standsOut = (p: Cell) => {
   // Against the cells around it (5 × 5) that are not of its own hue: it is
   // sparse among them, and differs in hue or they are grey.
   const sum = [0, 0, 0];
@@ -701,23 +740,23 @@ const standsOut = (p) => {
     }
   if (!n || same / total > 0.4) return false;
   const [hn, sn] = rgbToHsl(sum.map((v) => v / n));
-  const [hv] = rgbToHsl(p.vivid);
+  const [hv] = rgbToHsl(p.vivid!);
   const dh = Math.min(Math.abs(hn - hv), 360 - Math.abs(hn - hv));
   return sn < 0.15 || dh > 50;
 };
 const namedBins = ACCENT_HUES.map((_, j) => pts.filter((p) => p.named?.j === j)).filter((b) => b.length);
 for (const bin of namedBins)
   for (const p of bin) {
-    p.vivid = p.named.colour;
-    p.bin = -1 - p.named.j;
+    p.vivid = p.named!.colour;
+    p.bin = -1 - p.named!.j;
   }
-const accentBins = (() => {
+const accentBins = ((): Cell[][] => {
   if (!AF) return [];
-  const bins = new Map();
+  const bins = new Map<number | undefined, Cell[]>();
   for (const p of pts) {
     if (!p.vivid || p.named || !standsOut(p)) continue;
     if (!bins.has(p.bin)) bins.set(p.bin, []);
-    bins.get(p.bin).push(p);
+    bins.get(p.bin)!.push(p);
   }
   return [...bins.values()]
     .filter((b) => b.length >= 3 && b.length <= pts.length * 0.04)
@@ -727,7 +766,7 @@ const accentBins = (() => {
 accentBins.unshift(...namedBins.slice(0, Math.max(0, 52 - K - SEEDS.length)));
 for (const bin of accentBins)
   for (const p of bin) {
-    p.colour = p.vivid;
+    p.colour = p.vivid!;
     p.accent = true;
   }
 if (!pts.length)
@@ -738,12 +777,12 @@ if (!pts.length)
 // Darkness is normalised across the drawing, so every drawing uses the
 // whole ramp.
 const darks = pts.map((c) => c.dark).sort((a, b) => a - b);
-const q = (p) => darks[Math.floor(p * (darks.length - 1))];
+const q = (p: number) => darks[Math.floor(p * (darks.length - 1))];
 const lo = q(0.05);
 const hi = q(0.97);
 const strengths = pts.map((c) => c.strength).sort((a, b) => a - b);
 const EDGE = strengths[Math.floor(EDGE_Q * (strengths.length - 1))];
-const lineGlyph = (angle, my) => {
+const lineGlyph = (angle: number, my: number) => {
   let a = angle % 180;
   if (a < 0) a += 180;
   if (a < 22.5 || a >= 157.5) return my > 0.15 ? "_" : "-";
@@ -768,7 +807,7 @@ for (const cell of pts) {
 // ---------------------------------------------------------------- palette
 // k-means on the cells' colours, seeded along their lightness, plus any
 // --seed colours so a small accent keeps its own entry.
-let centres = [];
+let centres: number[][] = [];
 let accentKeys = 0;
 {
   // Accents keep their own entries: k-means would fold them into the
@@ -780,7 +819,7 @@ let accentKeys = 0;
     // In OKLab, distances follow what the eye sees; in RGB (the garland's
     // choice) they are weighted by how bright each channel looks.
     const LAB = opt["palette-space"] === "oklab";
-    const at = (rgb) => (LAB ? oklab(rgb) : rgb);
+    const at = (rgb: RGB) => (LAB ? oklab(rgb) : rgb);
     for (const p of rest) p.xc = at(p.colour);
     const sorted = [...rest].sort((a, b) => lum(a.colour) - lum(b.colour));
     for (let k = 0; k < K; k++) centres.push([...sorted[Math.floor(((k + 0.5) / K) * sorted.length)].xc]);
@@ -822,9 +861,9 @@ let accentKeys = 0;
 const KEYS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const used = [...new Set(pts.map((p) => p.k))].sort((a, b) => lum(centres[a]) - lum(centres[b]));
 const keyOf = new Map(used.map((k, i) => [k, KEYS[i]]));
-const palette = Object.fromEntries(
-  used.map((k) => [
-    keyOf.get(k),
+const palette: Record<string, string[]> = Object.fromEntries(
+  used.map((k, i) => [
+    KEYS[i],
     [hex(reach(lightVariant(centres[k]), "light", MIN_CONTRAST)), hex(reach(darkVariant(centres[k]), "dark", MIN_CONTRAST))],
   ]),
 );
@@ -843,8 +882,8 @@ if (opt["sparkle-hue"] !== "none") {
 }
 
 // ---------------------------------------------------------------- rows
-let art = [];
-let tone = [];
+let art: string[] = [];
+let tone: string[] = [];
 for (let r = 0; r < ROWS; r++) {
   let a = "";
   let t = "";
@@ -859,28 +898,28 @@ for (let r = 0; r < ROWS; r++) {
 // Drop empty rows at the top and bottom; the columns stay, so the width
 // in CSS px is what was asked for.
 const filled = art.map((row, i) => (row.trim() ? i : -1)).filter((i) => i >= 0);
-art = art.slice(filled[0], filled.at(-1) + 1);
-tone = tone.slice(filled[0], filled.at(-1) + 1);
+art = art.slice(filled[0], filled.at(-1)! + 1);
+tone = tone.slice(filled[0], filled.at(-1)! + 1);
 const rows = art.length;
 
 // ---------------------------------------------------------------- write
 mkdirSync(outDir, { recursive: true });
 const base0 = path.basename(input).replace(/\.[^.]+$/, "");
 const camel = base0
-  .replace(/[^A-Za-z0-9]+(.)?/g, (_, ch) => (ch ? ch.toUpperCase() : ""))
+  .replace(/[^A-Za-z0-9]+(.)?/g, (_, ch?: string) => (ch ? ch.toUpperCase() : ""))
   .replace(/^./, (ch) => ch.toLowerCase());
 const name = opt.name ?? (/^[A-Za-z_$]/.test(camel) ? camel : `drawing${camel}`);
 if (!/^[A-Za-z_$][\w$]*$/.test(name)) fail(`--name must be a JavaScript identifier, not "${name}"`);
-const words = (id) => id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, (ch) => ch.toUpperCase());
+const words = (id: string) => id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().replace(/^./, (ch) => ch.toUpperCase());
 const label = opt.title ?? (opt.name ? words(opt.name) : base0);
-const shellQuote = (v) => (/^[\w./:=,+-]+$/.test(v) ? v : `'${v.replace(/'/g, "'\\''")}'`);
+const shellQuote = (v: string) => (/^[\w./:=,+-]+$/.test(v) ? v : `'${v.replace(/'/g, "'\\''")}'`);
 const argv = Object.entries(given)
   .filter(([k]) => k !== "help")
   .flatMap(([k, v]) =>
     v === true ? [`--${k}`] : (Array.isArray(v) ? v : [v]).flatMap((x) => [`--${k}`, shellQuote(String(x))]),
   )
   .join(" ");
-const command = `node convert.mjs ${shellQuote(path.basename(input))} <outDir>${argv ? ` ${argv}` : ""}`;
+const command = `node convert.mts ${shellQuote(path.basename(input))} <outDir>${argv ? ` ${argv}` : ""}`;
 
 writeFileSync(
   path.join(outDir, "ascii.json"),
@@ -906,7 +945,7 @@ writeFileSync(
 
 // drawing.ts: an AsciiDrawing for components/AsciiArt.tsx on unvalley.me.
 const rawSafe = art.every((row) => !row.includes("`") && !row.includes("${"));
-const block = (rowsOf, raw) =>
+const block = (rowsOf: string[], raw: string | null) =>
   raw
     ? `lines(${raw === "raw" ? "String.raw" : ""}\`\n${rowsOf.map((row) => row.trimEnd()).join("\n")}\n\`)`
     : JSON.stringify(rowsOf.map((row) => row.trimEnd()), null, 4).replace(/\n\]$/, "\n  ]");
@@ -936,14 +975,14 @@ ${Object.entries(palette)
 );
 
 // index.html: the drawing as selectable text, on its own.
-const esc = (v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const vars = (i) =>
+const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const vars = (i: number) =>
   Object.entries(palette)
     .map(([k, pair]) => `--${k}:${pair[i]}`)
     .join(";");
 let body = "";
 art.forEach((row, r) => {
-  let run = null;
+  let run: string | null = null;
   let text = "";
   const flush = () => {
     if (!text) return;
@@ -994,7 +1033,7 @@ button{position:fixed;top:12px;right:12px;font:500 13px/1 system-ui,sans-serif;c
 );
 
 // Previews: each glyph placed on the grid, in Menlo bold as on the site.
-async function render(page, index, scale, colours = palette) {
+async function render(page: Page, index: number, scale: number, colours = palette) {
   let g = "";
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < COLS; c++) {
@@ -1050,8 +1089,14 @@ if (flowerKeys) {
 }
 
 // ---------------------------------------------------------------- report
-const minContrast = (i, page) =>
+const minContrast = (i: number, page: Page) =>
   Math.min(...Object.values(palette).map((pair) => contrast(rgbOf(pair[i]), PAGE[page])));
+const lowest = { light: +minContrast(0, "light").toFixed(2), dark: +minContrast(1, "dark").toFixed(2) };
+const warnings: string[] = [];
+if (pts.length / (COLS * ROWS) > 0.92 && INK !== "all")
+  warnings.push("Almost every cell is drawn: the background may be counted as ink. Try --ink paper, background or alpha, or cut the subject out first.");
+if (pts.length < 40) warnings.push("Very few glyphs: try a wider --width, --ink chroma or --fill.");
+if (lowest.light < 1.3 || lowest.dark < 1.3) warnings.push("Some colours barely show on one page: raise --min-contrast.");
 const report = {
   out: outDir,
   ink: INK,
@@ -1066,13 +1111,7 @@ const report = {
   accentKeys,
   colours: used.length,
   flowerKeys,
-  minContrast: { light: +minContrast(0, "light").toFixed(2), dark: +minContrast(1, "dark").toFixed(2) },
+  minContrast: lowest,
+  ...(warnings.length ? { warnings } : {}),
 };
-const warnings = [];
-if (pts.length / (COLS * ROWS) > 0.92 && INK !== "all")
-  warnings.push("Almost every cell is drawn: the background may be counted as ink. Try --ink paper, background or alpha, or cut the subject out first.");
-if (pts.length < 40) warnings.push("Very few glyphs: try a wider --width, --ink chroma or --fill.");
-if (report.minContrast.light < 1.3 || report.minContrast.dark < 1.3)
-  warnings.push("Some colours barely show on one page: raise --min-contrast.");
-if (warnings.length) report.warnings = warnings;
 console.log(JSON.stringify(report));

@@ -13,7 +13,7 @@ dozen colours, and each colour has two values, a deeper one that reads on a
 white page and a lighter one for a dark page. It is real text, so it can be
 selected and copied, and it scales with its box.
 
-`scripts/convert.mjs` does all of that from any image. Its `--preset garland`
+`scripts/convert.mts` does all of that from any image. Its `--preset garland`
 reproduces the garland exactly (same glyphs, colours and palette as the
 drawing on the site), and the defaults start from its choices, so the job
 here is mostly choosing the input and a few options well.
@@ -51,7 +51,7 @@ Measure the range rather than guessing it: painted reds, creams and
 yellow-greens overlap more than their names suggest.
 
 ```bash
-node <skill-dir>/scripts/hues.mjs <image> --box 0.4,0.6,0.6,0.4   # x,y,w,h as fractions or px
+node <skill-dir>/scripts/hues.mts <image> --box 0.4,0.6,0.6,0.4   # x,y,w,h as fractions or px
 ```
 
 It prints the vivid pixels in 10° bins with their mean colours. Measure the
@@ -68,10 +68,11 @@ run.
 ## 2. Convert
 
 ```bash
-node <skill-dir>/scripts/convert.mjs <image> <outDir> [options]
+node <skill-dir>/scripts/convert.mts <image> <outDir> [options]
 ```
 
-It needs `sharp`. It is found from the current directory (unvalley.me has it)
+It is TypeScript that Node runs directly, so it needs Node 22.18 or newer,
+and `sharp`. sharp is found from the current directory (unvalley.me has it)
 or the skill's own `scripts/`; if neither has it, the script prints the one
 command that installs it there (`npm install --prefix <skill-dir>/scripts`).
 
@@ -123,7 +124,7 @@ a folder that has it, such as the site repo.
 | Too many slashes, looks scratchy | `--edges 0.95`, a higher `--edge-coherence` (0.4), or `--no-edges` |
 | A colour that differs from the page in hue but not lightness is faint (a red on navy, an orange on cream) | on a background colour already counts; on white paper, `--ink background` counts it too (it also moves the ink's edge a little, so compare) |
 | Stems read as blobs | `--edges 0.85` |
-| A small vivid detail came out brown or grey, or is missing | `--accent-hue <range>` measured with `hues.mjs`; lower `--accent` (0.08) if it is only a few dabs |
+| A small vivid detail came out brown or grey, or is missing | `--accent-hue <range>` measured with `hues.mts`; lower `--accent` (0.08) if it is only a few dabs |
 | Petals or leaves turned the accent's colour | the `--accent-hue` range is too wide: narrow it away from their hues |
 | A full-bleed drawing has no line glyphs | expected: with `--ink all` every cell is fully covered, and lines go only on thin parts |
 | Colours look muddy | more `--colours` (16–24), or `--seed "#hex"` to give a colour its own entry |
@@ -194,4 +195,4 @@ selected and copied, sized to its box, light and dark. Give it a `--title`
 The converter's test gallery (26 varied images) and the check that
 `--preset garland` still equals the site's garland live in the unvalley.me
 repo, in `scripts/ascii-gallery/`. Its README also says how the converter
-decides, for tuning. Run them there after any change to `convert.mjs`.
+decides, for tuning. Run them there after any change to `convert.mts`.

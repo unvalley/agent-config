@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 // Measures the hues of an image's vivid pixels, to choose --accent-hue,
 // --sparkle-hue and --hue-map ranges from the image rather than by guess.
-//   node hues.mjs <image> [--box x,y,w,h]
+//   node hues.mts <image> [--box x,y,w,h]
 // --box takes pixels, or fractions of the image when all four are 0–1, so a
 // detail (a flower, a dot) can be measured apart from its surroundings.
 // Prints a row per 10° bin with its share of the vivid pixels and their mean
 // colour, the same "vivid" as the converter's accents (chroma ≥ 70, not near
 // black or white).
 import { parseArgs } from "node:util";
-import { hex, hueOf, isVivid, loadSharp } from "./lib.mjs";
+import { hex, hueOf, isVivid, loadSharp } from "./lib.mts";
 
 const sharp = loadSharp();
 const { values, positionals } = parseArgs({ allowPositionals: true, options: { box: { type: "string" } } });
 if (!positionals[0]) {
-  console.log("Usage: node hues.mjs <image> [--box x,y,w,h]");
+  console.log("Usage: node hues.mts <image> [--box x,y,w,h]");
   process.exit(1);
 }
 let img = sharp(positionals[0]).rotate().toColourspace("srgb");
