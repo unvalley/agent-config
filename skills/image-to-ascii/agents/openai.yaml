@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image to ASCII"
+  short_description: "Turn an image into coloured ASCII art like the unvalley.me garland"
+  default_prompt: "Use $image-to-ascii to turn this flower illustration into coloured ASCII art for unvalley.me."
