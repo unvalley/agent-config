@@ -15,7 +15,7 @@ selected and copied, and it scales with its box.
 
 `scripts/convert.mjs` does all of that from any image. Its `--preset garland`
 reproduces the garland exactly (same glyphs, colours and palette as the
-drawing on the site), so its defaults are the garland's choices and the job
+drawing on the site), and the defaults start from its choices, so the job
 here is mostly choosing the input and a few options well.
 
 What makes the garland look good is that it is a subject on an empty page:
@@ -121,10 +121,7 @@ a folder that has it, such as the site repo.
 | Speckle of single glyphs around the subject | raise `--coverage` (0.25–0.3) |
 | Thin parts break up | lower `--coverage` (0.12), or more `--width` |
 | Too many slashes, looks scratchy | `--edges 0.95`, a higher `--edge-coherence` (0.4), or `--no-edges` |
-| A colour that differs from the page in hue but not lightness is faint (a red on navy, an orange on cream) | on a background the default `--tone auto` already counts colour; on white paper, `--tone ink` (leaves and fills get heavier too) |
-| Smooth washes or skies come out in bands of one glyph | `--dither` |
-| Outlines should read as drawn lines (an engraving, a bird's silhouette) | `--glyphs shape`, which picks `_ / \ - ` and fills by shape at boundaries; busier, so compare with the default |
-| Mid-tones should follow the font's real ink | `--ramp-map measured` (in Menlo bold `o` is darker than `x` and `%`, so fills shift toward `o`) |
+| A colour that differs from the page in hue but not lightness is faint (a red on navy, an orange on cream) | on a background colour already counts; on white paper, `--ink background` counts it too (it also moves the ink's edge a little, so compare) |
 | Stems read as blobs | `--edges 0.85` |
 | A small vivid detail came out brown or grey, or is missing | `--accent-hue <range>` measured with `hues.mjs`; lower `--accent` (0.08) if it is only a few dabs |
 | Petals or leaves turned the accent's colour | the `--accent-hue` range is too wide: narrow it away from their hues |
@@ -194,62 +191,7 @@ selected and copied, sized to its box, light and dark. Give it a `--title`
 
 ## Changing the converter
 
-`gallery/sources.json` lists 26 varied images (plates on white and aged
-paper, white flowers, birds, woodblocks on coloured and graded grounds,
-flowers on black) with where each came from and what is known of its rights.
-The images are not in the repository; `node <skill-dir>/gallery/fetch.mjs`
-downloads them into `gallery/images/`. After a change to `convert.mjs`, run
-`node <skill-dir>/gallery/run.mjs <outDir>` (and again with `--defaults`)
-from the site repo and look at the sheets. Then run
-`node <skill-dir>/scripts/check-garland.mjs` from the site repo: it converts
-the garland's own watercolour with `--preset garland` and fails unless the
-glyphs equal the garland in `components/flowerVineArt.ts`. That watercolour
-is not in the repository either; keep it at
-`gallery/images/garland-source.png`.
-
-## How it decides, for tuning
-
-- `--ink auto` looks at a ring just inside the border. It picks `alpha` if
-  the edge is transparent and `all` if no colour dominates the ring. It
-  picks `paper` if the ring is white enough not to count as ink. Otherwise
-  it picks `background`, with the ground fitted as a smooth surface to the
-  ring, so a gradient stays blank too. A thin frame or mat of one colour
-  with a different ground inside is cut off first.
-- The image is turned upright from its EXIF orientation, trimmed to its ink
-  with a 3 px margin, and resampled to 4 × 6 samples per cell.
-- A cell is drawn when at least `--coverage` of its samples are ink. Its
-  colour is the mean of those samples.
-- Darkness is spread over the whole ramp from the 5th to the 97th percentile
-  of the drawing's cells, so a pale drawing still uses dense glyphs.
-  Cells less than 45% covered stop at the third glyph, so edges stay light.
-  On a plain dark background, "darkness" is the difference from the
-  background instead.
-- Darkness is lightness on white paper. On a background (`--tone auto`) it
-  is the OKLab distance from the fitted ground with colourfulness counted
-  twice, so a subject that differs from its ground in colour but not in
-  lightness still gets dense glyphs.
-- Edges come from a structure tensor of Sobel gradients. A cell in the top
-  `--edges` quantile of edge strength that is less than 70% covered, and
-  whose gradients agree on a direction (coherence at least
-  `--edge-coherence`, after the EdgeASCII node for ComfyUI), becomes the
-  line glyph nearest the edge's direction: - _ \ | /.
-- With `--glyphs shape` (after Alex Harri, "ASCII characters are not
-  pixels"), each glyph is drawn in the font and measured in six staggered
-  windows. A cell whose darkness is uneven across those windows takes the
-  glyph nearest in shape, after a contrast boost (`--shape-contrast`).
-  `|` is left out, because without a glyph that fills only half a cell,
-  every vertical boundary would match it. `--ramp-map measured` uses the
-  same measurement to space the ramp by real ink.
-- `--dither` adds a 4 × 4 ordered dither between ramp steps.
-- Accents are found on the source's own pixels (up to 4× the cell grid, no
-  smoothing). A cell is an accent when its vivid pixels are at least
-  `--accent` of its ink, their hue is rare in the drawing (under 4% of
-  cells) and differs from the cells around it, or when its pixels in an
-  `--accent-hue` range are. Accent cells take the vivid colour and each hue
-  gets its own palette entry. `--accent 0` turns this off, as for the
-  garland.
-- The palette is k-means over the other cells' colours in OKLab (RGB for
-  the garland preset), seeded along their lightness. Keys run A (darkest) to z. The light-page value is deepened
-  (blues made more saturated) and the dark-page value lightened, then
-  each is mixed toward black or white until it has `--min-contrast` with
-  its page (white and #0a0a0a).
+The converter's test gallery (26 varied images) and the check that
+`--preset garland` still equals the site's garland live in the unvalley.me
+repo, in `scripts/ascii-gallery/`. Its README also says how the converter
+decides, for tuning. Run them there after any change to `convert.mjs`.

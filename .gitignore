@@ -8,8 +8,6 @@
 /.agents/
 /skills-lock.json
 
-# image-to-ascii: the gallery's images are downloaded by gallery/fetch.mjs, not
-# committed (their rights vary), and sharp may be installed beside the scripts.
-/skills/image-to-ascii/gallery/images/
+# image-to-ascii: sharp may be installed beside the scripts.
 /skills/image-to-ascii/scripts/node_modules/
 /skills/image-to-ascii/scripts/package-lock.json

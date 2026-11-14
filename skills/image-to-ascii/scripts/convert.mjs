@@ -11,24 +11,9 @@
 // index.html (standalone, selectable text), light.png, dark.png and
 // preview.png (source, light and dark stacked, for judging the result).
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-
-function loadSharp() {
-  for (const from of [process.cwd(), here]) {
-    try {
-      return createRequire(path.join(from, "noop.js"))("sharp");
-    } catch {}
-  }
-  console.error(
-    `sharp is not installed here or in ${here}. Install it once with:\n  npm install --prefix "${here}"`,
-  );
-  process.exit(2);
-}
+import { hex, hueOf, isVivid, loadSharp } from "./lib.mjs";
 
 // ---------------------------------------------------------------- options
 const PRESETS = {
@@ -43,9 +28,6 @@ const PRESETS = {
     "sparkle-hue": "180-225",
     "min-contrast": "0",
     accent: "0",
-    tone: "luminance",
-    glyphs: "density",
-    "ramp-map": "even",
     "palette-space": "rgb",
     "edge-coherence": "0",
   },
@@ -66,13 +48,8 @@ const DEFAULTS = {
   accent: "0.15",
   "type-from": "./flowerVineArt",
   weight: "bold",
-  tone: "auto",
-  glyphs: "density",
-  "ramp-map": "even",
   "palette-space": "oklab",
   "edge-coherence": "0.25",
-  "shape-contrast": "1.6",
-  font: "Menlo",
 };
 const HELP = `Usage: node convert.mjs <image> <outDir> [options]
 
@@ -84,23 +61,8 @@ Glyphs
   --ramp <chars>        Density ramp, lightest to darkest (default ".:+*ox%#@").
   --edges <q>           Quantile of edge strength above which a thin cell becomes / \\ | - _ (default 0.9).
   --no-edges            Only density glyphs.
-  --glyphs <mode>       density | shape (default density). density: the ramp, plus line glyphs on
-                        coherent edges, as the garland. shape: where a cell has structure, the
-                        glyph whose measured shape matches it best (after Alex Harri's renderer),
-                        so outlines are drawn with _ / \ and more; busier, flat cells unchanged.
-  --shape-contrast <g>  Sharpen a cell's shape before matching (default 1.6; 1 = none).
-  --ramp-map <mode>     even | measured (default even): pick ramp glyphs by equal steps along the
-                        ramp, as the garland, or by their ink coverage measured in --font (which
-                        also puts them in true order: in Menlo bold "o" is darker than "x" and "%").
   --edge-coherence <c>  Least coherence (0–1) of an edge for a line glyph (default 0.25), so
                         texture does not turn into stray slashes.
-  --tone <mode>         auto | ink | luminance (default auto: ink on a background, luminance on
-                        paper). ink: how far a cell's colour is from the page or ground in OKLab,
-                        colourfulness counted twice, so a red sun on navy is not drawn as faintly
-                        as its lightness alone would make it. luminance: lightness only, as the
-                        garland.
-  --dither              Ordered dithering between ramp steps, against banding in smooth washes.
-  --font <name>         Font for measuring glyphs and drawing previews (default Menlo).
   --coverage <f>        Share of a cell that must be ink to draw it (default 0.17).
 What counts as ink
   --ink <mode>          auto | paper | chroma | alpha | background | all (default auto).
@@ -109,6 +71,8 @@ What counts as ink
                         alpha: opaque pixels of a transparent cut-out.
                         background: differs from the border's colour (plain dark or coloured backgrounds).
                         all: every pixel (full-bleed photos and paintings).
+                        Darkness is lightness on paper; on a background it is the OKLab distance
+                        from the ground, colourfulness counted twice.
   --ink-threshold <f>   Colour distance from the background for --ink background (default 0.1).
   --fill                Count pale areas enclosed by ink as ink (highlights inside petals).
   --flop                Mirror left to right.
@@ -148,13 +112,7 @@ const { values: given, positionals } = parseArgs({
     ramp: { type: "string" },
     edges: { type: "string" },
     "no-edges": { type: "boolean" },
-    glyphs: { type: "string" },
-    "shape-contrast": { type: "string" },
-    "ramp-map": { type: "string" },
     "edge-coherence": { type: "string" },
-    tone: { type: "string" },
-    dither: { type: "boolean" },
-    font: { type: "string" },
     "palette-space": { type: "string" },
     coverage: { type: "string" },
     ink: { type: "string" },
@@ -211,16 +169,9 @@ if (!(K >= 1) || K + SEEDS.length > 52) fail("--colours plus seeds must be betwe
 const EDGE_Q = Number(opt.edges);
 const COVERAGE = Number(opt.coverage);
 const MIN_CONTRAST = Number(opt["min-contrast"]);
-for (const [key, allowed] of [
-  ["tone", ["auto", "ink", "luminance"]],
-  ["glyphs", ["density", "shape"]],
-  ["ramp-map", ["even", "measured"]],
-  ["palette-space", ["oklab", "rgb"]],
-]) {
-  if (!allowed.includes(opt[key])) fail(`--${key} is ${allowed.join(" or ")}, not "${opt[key]}"`);
-}
+if (!["oklab", "rgb"].includes(opt["palette-space"]))
+  fail(`--palette-space is oklab or rgb, not "${opt["palette-space"]}"`);
 const EDGE_COH = Number(opt["edge-coherence"]);
-const SHAPE_CONTRAST = Number(opt["shape-contrast"]);
 const ACCENT_HUES = (opt["accent-hue"] ?? [])
   .flatMap((m) => m.split(","))
   .filter(Boolean)
@@ -269,8 +220,6 @@ function hslToRgb([h, s, l]) {
   return [f(h + 1 / 3), f(h), f(h - 1 / 3)].map((v) => Math.round(v * 255));
 }
 const lum = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-const hex = (c) =>
-  `#${c.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("")}`;
 const chroma = (c) => Math.max(...c) - Math.min(...c);
 // OKLab (Björn Ottosson), for perceptual distances.
 const toLin = (v) => {
@@ -309,13 +258,6 @@ const inkAmount = (rgb, ref) => {
   const p = oklab(rgb);
   const q = oklab(ref);
   return Math.hypot(p[0] - q[0], CHROMA_WEIGHT * Math.hypot(p[1] - q[1], p[2] - q[2]));
-};
-const hueOf = (r, g, b) => {
-  const hi = Math.max(r, g, b);
-  const d = hi - Math.min(r, g, b);
-  if (!d) return 0;
-  const h = hi === r ? (g - b) / d + (g < b ? 6 : 0) : hi === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return h * 60;
 };
 
 const hueMaps = (opt["hue-map"] ?? [])
@@ -477,9 +419,6 @@ if (INK === "auto") {
 }
 if (!["paper", "chroma", "alpha", "background", "all"].includes(INK))
   fail(`--ink is auto, paper, chroma, alpha, background or all, not "${opt.ink}"`);
-// On white paper lightness tracks the ink; on a coloured ground a subject can
-// differ in colour but not in lightness, so its distance in colour is used.
-const TONE = opt.tone === "auto" ? (INK === "background" ? "ink" : "luminance") : opt.tone;
 
 // A plain ground is often not one colour: a woodblock's bokashi fades top to
 // bottom, a studio backdrop has a vignette. The ground is a smooth surface
@@ -608,10 +547,8 @@ const groundAt = (x, y) =>
 const rawInk = (x, y) => {
   const c = px(x, y);
   switch (INK) {
-    case "paper": {
-      const [, s] = rgbToHsl(c);
-      return 1 - lum(c) > 0.1 || (s > 0.25 && 1 - lum(c) > 0.04);
-    }
+    case "paper":
+      return paperIsInk(c);
     case "chroma":
       return lum(c) < 0.955 || chroma(c) >= 9;
     case "alpha":
@@ -650,7 +587,6 @@ if (opt.fill && INK !== "all") {
 const isInk = (x, y) => inkMask[y * SW + x] === 1;
 
 // ---------------------------------------------------------------- cells
-const WHITE = [255, 255, 255];
 const cells = [];
 for (let r = 0; r < ROWS; r++) {
   for (let c = 0; c < COLS; c++) {
@@ -701,10 +637,7 @@ for (let r = 0; r < ROWS; r++) {
       for (let y = r * SY * AF; y < (r + 1) * SY * AF; y++)
         for (let x = c * SX * AF; x < (c + 1) * SX * AF; x++) {
           const i = (y * VW + x) * 3;
-          const hi = Math.max(vividBuf[i], vividBuf[i + 1], vividBuf[i + 2]);
-          const lo = Math.min(vividBuf[i], vividBuf[i + 1], vividBuf[i + 2]);
-          const l = (hi + lo) / 510;
-          if (hi - lo < 70 || l <= 0.15 || l >= 0.85) continue;
+          if (!isVivid(vividBuf[i], vividBuf[i + 1], vividBuf[i + 2])) continue;
           vn++;
           vsum[0] += vividBuf[i];
           vsum[1] += vividBuf[i + 1];
@@ -727,13 +660,10 @@ for (let r = 0; r < ROWS; r++) {
     const strength = Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (SX * SY);
     // The gradient's orientation; the edge runs across it.
     const theta = (0.5 * Math.atan2(2 * jxy, jxx - jyy) * 180) / Math.PI;
-    const ref = INK === "background" ? groundAt((c + 0.5) * SX, (r + 0.5) * SY) : WHITE;
+    // On white paper lightness tracks the ink; on a coloured ground a subject
+    // can differ in colour but not in lightness, so its distance in colour is used.
     const dark =
-      TONE === "ink"
-        ? inkAmount(colour, ref)
-        : INK === "background"
-          ? Math.abs(lum(colour) - lum(ref))
-          : 1 - lum(colour);
+      INK === "background" ? inkAmount(colour, groundAt((c + 0.5) * SX, (r + 0.5) * SY)) : 1 - lum(colour);
     // How much the gradients agree on one direction: high along a stem or an
     // outline, low in texture.
     const coherence = jxx + jyy > 0 ? Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (jxx + jyy) : 0;
@@ -822,171 +752,16 @@ const lineGlyph = (angle, my) => {
   return "/";
 };
 
-// Each glyph's ink, measured by drawing it in the font at the cell's size:
-// its coverage of the cell, and of six windows, two columns of three with
-// the right one set lower so that mirror images differ (after Alex Harri,
-// "ASCII characters are not pixels").
-const WINDOWS = [
-  [0, 0.5, 0.02, 0.36],
-  [0, 0.5, 0.34, 0.68],
-  [0, 0.5, 0.66, 1],
-  [0.5, 1, 0.08, 0.42],
-  [0.5, 1, 0.4, 0.74],
-  [0.5, 1, 0.72, 1],
-];
-async function measureGlyphs(glyphs) {
-  // All glyphs in one strip, a cell each: one render, one font lookup.
-  const S = 10;
-  const W = Math.round(CELL_W * S);
-  const H = Math.round(CELL_H * S);
-  const xml = (v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const texts = glyphs
-    .map((g, i) => `<text x="${i * W}" y="${CELL_H * 0.8 * S}">${xml(g)}</text>`)
-    .join("");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W * glyphs.length}" height="${H}"><g font-family="${xml(opt.font)}, DejaVu Sans Mono, monospace" font-weight="${xml(opt.weight)}" font-size="${(CELL_W / 0.602) * S}" fill="#fff" xml:space="preserve">${texts}</g></svg>`;
-  const { data } = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const SW0 = W * glyphs.length;
-  const out = new Map();
-  glyphs.forEach((g, gi) => {
-    const alphaAt = (x, y) => data[(Math.min(H - 1, y) * SW0 + gi * W + Math.min(W - 1, x)) * 4 + 3] / 255;
-    let total = 0;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) total += alphaAt(x, y);
-    const win = WINDOWS.map(([x0, x1, y0, y1]) => {
-      let sum = 0;
-      let n = 0;
-      for (let y = Math.floor(y0 * H); y < Math.ceil(y1 * H); y++)
-        for (let x = Math.floor(x0 * W); x < Math.ceil(x1 * W); x++) {
-          sum += alphaAt(x, y);
-          n++;
-        }
-      return sum / n;
-    });
-    out.set(g, { coverage: total / (W * H), win });
-  });
-  return out;
-}
-const LINES = opt["no-edges"] ? "" : "/\\|-_";
-const SHAPE = opt.glyphs === "shape";
-const MEASURED = opt["ramp-map"] === "measured";
-const glyphInk = SHAPE || MEASURED ? await measureGlyphs([...new Set([...RAMP, ...LINES])]) : null;
-
-// The ramp in order of measured coverage, so darkness maps to even steps of
-// ink in the font rather than of position in the ramp.
-const rampByInk = MEASURED
-  ? [...new Set(RAMP)].sort((a, b) => glyphInk.get(a).coverage - glyphInk.get(b).coverage)
-  : [...RAMP];
-// A 4 × 4 Bayer matrix, for --dither.
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-function rampGlyph(t, capped, r, c) {
-  if (opt.dither) t += ((BAYER[(r % 4) * 4 + (c % 4)] + 0.5) / 16 - 0.5) / (rampByInk.length - 1);
-  t = Math.max(0, Math.min(1, t));
-  if (!MEASURED) {
-    let i = Math.round(t * (RAMP.length - 1));
-    if (capped) i = Math.min(i, 2);
-    return RAMP[i];
-  }
-  const glyphs = capped ? rampByInk.slice(0, 3) : rampByInk;
-  const c0 = glyphInk.get(rampByInk[0]).coverage;
-  const c1 = glyphInk.get(rampByInk.at(-1)).coverage;
-  const target = c0 + t * (c1 - c0);
-  let best = glyphs[0];
-  for (const g of glyphs)
-    if (Math.abs(glyphInk.get(g).coverage - target) < Math.abs(glyphInk.get(best).coverage - target)) best = g;
-  return best;
-}
-
-// For --glyphs shape: the tone at twice the sampling (8 × 12 per cell),
-// zero where there is no ink, and each glyph's windows scaled so that the
-// fullest glyph in each window is 1.
-let toneGrid = null;
-const TF = 2;
-if (SHAPE) {
-  const TW = SW * TF;
-  const TH = SH * TF;
-  const { data: fine } = await sharp(source)
-    .flatten({ background: "#ffffff" })
-    .extract(box)
-    .resize(TW, TH, { fit: "fill", kernel: "lanczos3" })
-    .removeAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  toneGrid = new Float32Array(TW * TH);
-  const white = oklab(WHITE);
-  for (let Y = 0; Y < TH; Y++) {
-    const my = Math.floor(Y / TF);
-    let refRow = null;
-    for (let X = 0; X < TW; X++) {
-      const mx = Math.floor(X / TF);
-      if (!inkMask[my * SW + mx]) continue;
-      const i = (Y * TW + X) * 3;
-      const rgb = recolour([fine[i], fine[i + 1], fine[i + 2]]);
-      const ref = INK === "background" ? groundAt(mx, my) : WHITE;
-      if (TONE === "ink") {
-        const p = oklab(rgb);
-        const q = INK === "background" ? (refRow ??= new Map()).get(mx) ?? oklab(ref) : white;
-        if (INK === "background") refRow.set(mx, q);
-        toneGrid[Y * TW + X] = Math.hypot(p[0] - q[0], CHROMA_WEIGHT * Math.hypot(p[1] - q[1], p[2] - q[2]));
-      } else toneGrid[Y * TW + X] = INK === "background" ? Math.abs(lum(rgb) - lum(ref)) : 1 - lum(rgb);
-    }
-  }
-}
-// "|" is left out: with no glyph that fills only half a cell, every
-// vertical boundary would match it and petals would read as scratched.
-// Real vertical stems still get it from the edge rule.
-const shapeSet = SHAPE ? [...new Set([...RAMP, ...LINES.replace("|", "")])] : [];
-const winMax = SHAPE ? WINDOWS.map((_, i) => Math.max(...shapeSet.map((g) => glyphInk.get(g).win[i]))) : [];
-const shapeOf = new Map(shapeSet.map((g) => [g, glyphInk.get(g).win.map((v, i) => v / (winMax[i] || 1))]));
-function shapeGlyph(cell) {
-  const TW = SW * TF;
-  const x0 = cell.c * SX * TF;
-  const y0 = cell.r * SY * TF;
-  const w = SX * TF;
-  const h = SY * TF;
-  let v = WINDOWS.map(([a, b, c, d]) => {
-    let sum = 0;
-    let n = 0;
-    for (let y = y0 + Math.floor(c * h); y < y0 + Math.ceil(d * h); y++)
-      for (let x = x0 + Math.floor(a * w); x < x0 + Math.ceil(b * w); x++) {
-        sum += toneGrid[y * TW + x];
-        n++;
-      }
-    return Math.max(0, Math.min(1, (sum / n - lo) / (hi - lo || 1)));
-  });
-  const top = Math.max(...v);
-  // Flat cells keep the density ramp, as the garland's fills do.
-  if (top < 0.25 || top - Math.min(...v) < 0.45) return null;
-  v = v.map((x) => top * (x / top) ** SHAPE_CONTRAST);
-  let best = null;
-  let bd = Number.POSITIVE_INFINITY;
-  for (const [g, s] of shapeOf) {
-    let d = 0;
-    for (let i = 0; i < 6; i++) d += (v[i] - s[i]) ** 2;
-    if (d < bd) {
-      bd = d;
-      best = g;
-    }
-  }
-  return best;
-}
-
-const counts = { density: 0, edge: 0, shape: 0 };
+let edgeGlyphs = 0;
 for (const cell of pts) {
-  const t = Math.max(0, Math.min(1, (cell.dark - lo) / (hi - lo)));
-  const shaped = SHAPE ? shapeGlyph(cell) : null;
-  if (shaped) {
-    cell.glyph = shaped;
-    counts.shape++;
-  } else if (
-    !opt["no-edges"] &&
-    cell.strength >= EDGE &&
-    cell.coverage < 0.7 &&
-    cell.coherence >= EDGE_COH
-  ) {
+  if (!opt["no-edges"] && cell.strength >= EDGE && cell.coverage < 0.7 && cell.coherence >= EDGE_COH) {
     cell.glyph = lineGlyph(cell.edge, cell.my);
-    counts.edge++;
+    edgeGlyphs++;
   } else {
-    cell.glyph = rampGlyph(t, cell.coverage < 0.45, cell.r, cell.c);
-    counts.density++;
+    // Cells less than 45% covered stop at the third glyph, so edges stay light.
+    const t = Math.max(0, Math.min(1, (cell.dark - lo) / (hi - lo)));
+    const i = Math.round(t * (RAMP.length - 1));
+    cell.glyph = RAMP[cell.coverage < 0.45 ? Math.min(i, 2) : i];
   }
 }
 
@@ -1229,7 +1004,7 @@ async function render(page, index, scale, colours = palette) {
     }
   const W = COLS * CELL_W;
   const H = rows * CELL_H;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * scale)}" height="${Math.round(H * scale)}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/><g font-family="${opt.font}, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${CELL_W / 0.602}" xml:space="preserve">${g}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * scale)}" height="${Math.round(H * scale)}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/><g font-family="Menlo, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${CELL_W / 0.602}" xml:space="preserve">${g}</g></svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 const scale = Math.max(1, Math.min(2, 3000 / (COLS * CELL_W)));
@@ -1280,15 +1055,13 @@ const minContrast = (i, page) =>
 const report = {
   out: outDir,
   ink: INK,
-  tone: TONE,
   ...(frame ? { frame: [frame.left, frame.top, frame.width, frame.height] } : {}),
   columns: COLS,
   rows,
   width: COLS * CELL_W,
   height: +(rows * CELL_H).toFixed(1),
   glyphs: pts.length,
-  edgeGlyphs: counts.edge,
-  shapeGlyphs: counts.shape,
+  edgeGlyphs,
   accentCells: pts.filter((p) => p.accent).length,
   accentKeys,
   colours: used.length,
