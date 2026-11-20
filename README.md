@@ -57,6 +57,9 @@ Skills are evaluated with Claude Code's `claude plugin eval`. A case lives in
   load, so a routing case can load a sibling skill too.
 - Each file in `graders/` is one check: `regex` on the reply, `tool_used` for
   whether a skill fired, or `llm` for a rubric.
+- Runs have no network, so a case that needs an input file keeps it in
+  `files/`, with a `case.yaml` whose `scaffold_script` copies it into the
+  run. The recipes pass `--scaffold` for that.
 
 ```sh
 just eval git-commits   # one skill

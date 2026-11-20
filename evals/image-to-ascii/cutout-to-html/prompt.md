@@ -10,4 +10,4 @@ allowed_tools: [Read, Glob, Grep, Skill, Bash, Write, Edit]
 
 このカメラの切り抜き画像を色付きのアスキーアートにして、ブラウザで開くだけで見られる1枚のHTMLにしてほしい。文字としてコピーできるようにしたい。
 
-画像: https://unvalley.me/static/things/original/sigma-fp.png
+画像: camera.png（作業フォルダにあります）
