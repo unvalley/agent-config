@@ -1,43 +1,58 @@
 ---
 name: image-to-ascii
-description: Turn an image (a watercolour, illustration, flower, plant, logo, product photo, cut-out or painting) into coloured ASCII art in the style of the flower garland on unvalley.me. Glyphs are picked by darkness from .:+*ox%#@, line glyphs / \ | - _ follow thin stems and edges, and a small palette gives each colour one value for light pages and one for dark. It delivers preview images, a standalone HTML page of selectable text, or an AsciiDrawing module for the site's AsciiArt component. Use this whenever the user wants an image or photo turned into ASCII art or text art (including requests in Japanese for ASCII art, AA or text art), wants something like our flowers or like the garland, or wants a new ASCII drawing, vine, plant or decoration on unvalley.me, even if they never say ASCII.
+description: Draw coloured ASCII art on a grid of cells, from an image (a watercolour, illustration, flower, logo, product photo, cut-out or painting) or from only a description of a subject (a cat, a sunflower, a mountain), in the style of the flower garland on unvalley.me. Glyphs are picked by how much paint a cell holds from .:+*ox%#@, line glyphs / \ | - _ follow stems and edges, each colour has a value for light pages and one for dark, and the cells show as a faint grid unless the user wants the glyphs alone. Delivers previews, a standalone HTML page of selectable text, plain text, or a module for a React site. Use this whenever the user wants an image or photo turned into ASCII art or text art, asks for a drawing of something in ASCII or text (including Japanese requests for ASCII art, AA or text art), wants something like our flowers or the garland, or wants a new ASCII drawing, vine, plant or decoration on unvalley.me, even if they never say ASCII.
 ---
 
-# Image to ASCII
+# ASCII art on a grid
 
 The garland at the foot of unvalley.me is a watercolour of clematis turned
-into text: every cell of 4 × 6.5 CSS pixels that holds enough paint gets a
-glyph, denser for darker paint, and a slanted or straight line glyph where a
-thin stem or petal edge runs through it. Each cell takes one of about a
-dozen colours, and each colour has two values, a deeper one that reads on a
-white page and a lighter one for a dark page. It is real text, so it can be
-selected and copied, and it scales with its box.
+into text. The picture is cut into a grid of cells, 4 × 6.5 CSS pixels each;
+a cell that holds enough paint gets a glyph, denser for more paint, or a
+slanted or straight line glyph where a thin stem or petal edge runs through
+it. Each cell takes one of about a dozen colours, and each colour has two
+values, a deeper one that reads on a white page and a lighter one for a
+dark page. It is real text, so it can be selected and copied, and it scales
+with its box.
 
-`scripts/convert.mts` does all of that from any image. Its `--preset garland`
-reproduces the garland exactly (same glyphs, colours and palette as the
-drawing on the site), and the defaults start from its choices, so the job
-here is mostly choosing the input and a few options well.
+`scripts/convert.mts` does all of that from any image, SVG included. By
+default it also shows the cells as a grid of thin lines under the glyphs,
+like squared paper; `--no-grid` leaves the glyphs alone on the page.
 
 What makes the garland look good is that it is a subject on an empty page:
 the paper between flowers stays blank, so the shapes read. Keep that in mind
-for every image. A subject on plain paper or a transparent cut-out works
+for every drawing. A subject on plain paper or a transparent cut-out works
 best; a full-bleed photo or painting becomes a solid block of text, which
 can still be nice but looks different, so say so.
 
-## 1. Look at the image
+## 1. Get a picture
 
-Read the image before converting, and decide what counts as ink:
+- **The user gave an image**: use it, and read it before converting (step 2).
+- **The user only named a subject**: draw it as an SVG and convert that.
+  Read [references/drawing-a-subject.md](references/drawing-a-subject.md)
+  and start from [assets/subject.svg](assets/subject.svg). Never type the
+  ASCII by hand; it drifts out of proportion within a few rows.
+- **A photo with a busy background**: cut the subject out first. rembg
+  does this well: `uvx --from "rembg[cpu,cli]" rembg i in.jpg cut.png`. It
+  downloads its model (about 170 MB) the first time, so ask before the
+  first run.
+
+Ask the user only what the request leaves open and the result depends on:
+usually nothing. Pick a size and the grid by the rules below and say what
+you picked.
+
+## 2. Look at the image
+
+Decide what counts as ink:
 
 | The image | Do |
 | --- | --- |
 | Subject on white paper (watercolour, illustration) | defaults (`--ink auto` picks `paper`) |
 | Plate on cream, aged or tinted paper | defaults (`auto` picks `background`, so the paper stays blank) |
 | White or pale petals on white paper | `--ink chroma`; see "White petals" below. Not on tinted paper, where chroma draws the paper too |
-| Transparent PNG cut-out | defaults (`auto` picks `alpha`) |
+| Transparent PNG cut-out, or an SVG with no background | defaults (`auto` picks `alpha`) |
 | Subject on a plain dark or coloured ground (flowers on black, a woodblock on orange or navy) | defaults (`auto` picks `background`); if the subject is as dark as the ground, cut it out first |
 | Graded ground (bokashi, a studio vignette) | defaults fit the gradient; if part of it is still drawn, `--ink-threshold 0.2`–`0.25` |
 | Picture in a frame or mat | defaults: a thin frame of one colour is found and the picture inside it used (the report shows `frame`) |
-| Photo with a busy background | cut the subject out first (below), then convert the PNG |
 | Full-bleed painting or scene, wanted whole | `--ink all --colours 24` (auto picks `all` only when no colour dominates the border) and tell the user it fills the whole box |
 
 Also look for small vivid details that matter: poppies in a field, a red
@@ -60,68 +75,84 @@ not its neighbours' bins. If the detail has two tones (deep red dabs and
 salmon drifts), give two ranges, `345-22,22-32`, and each gets its own
 entry.
 
-To cut a subject out, unvalley.me uses rembg (as `scripts/thing-cutout.mjs`
-does): `uvx --from "rembg[cpu,cli]" rembg i in.jpg cut.png`. rembg downloads
-its model (about 170 MB) the first time, so tell the user before the first
-run.
-
-## 2. Convert
+## 3. Convert
 
 ```bash
 node <skill-dir>/scripts/convert.mts <image> <outDir> [options]
 ```
 
 It is TypeScript that Node runs directly, so it needs Node 22.18 or newer,
-and `sharp`. sharp is found from the current directory (unvalley.me has it)
-or the skill's own `scripts/`; if neither has it, the script prints the one
-command that installs it there (`npm install --prefix <skill-dir>/scripts`).
+and `sharp`. sharp is found from the current directory or the skill's own
+`scripts/`; if neither has it, the script prints the one command that
+installs it there (`npm install --prefix <skill-dir>/scripts`). Every option
+is listed with `--help`.
 
-Pick the width for where the drawing will live. Columns are width ÷ 4:
+### Pick the size
 
-- the garland: 1000 (wider than the text column, centred on the page)
-- the site's text column: 672
-- a side vine down a margin: about 150
-- a standalone page: whatever shows the subject; 480–1000 is usual
+Columns = width ÷ cell width (4 px by default). More columns show more
+detail but make more text: keep columns × rows under about 40,000 for
+anything going on a web page.
 
-More columns show more detail but more text: keep columns × rows under about
-40,000 for anything going on a web page.
+- a standalone page: 400–1000 px wide, which is 100–250 columns
+- a figure in a text column: 672 px
+- a side vine down a margin: about 150 px
+- a bold grid where every glyph reads on its own: fewer, bigger cells, with
+  `--columns` and `--width` together, e.g. `--columns 80 --width 480` for
+  cells 6 px wide. The cells keep their shape.
 
-It writes into `outDir`:
+### Grid or not
+
+The grid is on by default: the previews and `index.html` draw the cells as
+faint lines under the glyphs, and `index.html` has a switch to hide them.
+Convert with `--no-grid` when the user asks for no grid ("without the grid",
+グリッドなし, マス目なし, plain), or when the drawing is a decoration on a
+page, as the garland is. The grid only changes how the drawing is shown:
+the glyphs, `ascii.txt` and `drawing.ts` are the same either way.
+
+### What it writes
+
+Into `outDir`:
 
 - `preview.png`: the source, the drawing on a light page and on a dark page,
   stacked (side by side for a tall drawing). Look at this one first.
 - `light.png`, `dark.png`: the drawing alone on each page. Crop these to
   judge small details; the preview is scaled down.
-- `flowers.png`, when there are `flowerKeys`: the flower cells in colour and
-  the rest pale, to check where the sparkles will land.
 - `index.html`: the drawing as selectable text, standalone, following the
-  system theme with a light/dark button.
-- `drawing.ts`: an `AsciiDrawing` for unvalley.me, with the command that made
-  it in its header.
-- `ascii.json`: the rows, colour keys and palette, for other uses.
+  system theme, with grid and light/dark switches.
+- `ascii.txt`: the glyphs alone, for a README, a code comment or a terminal.
+- `drawing.ts`: an `AsciiDrawing` for [assets/AsciiArt.tsx](assets/AsciiArt.tsx)
+  (or for unvalley.me, see step 5), with the command that made it in its
+  header.
+- `ascii.json`: the rows, colour keys, palette and grid setting, for other
+  uses.
+- `flowers.png`, when `--sparkle-hue` found flower colours: those cells in
+  colour and the rest pale.
 
 It prints a one-line JSON report: the ink mode it chose, columns, rows,
-glyph count, how many cells became accents and how many palette entries
-they got, colours, `flowerKeys`, the lowest contrast of the palette on each
-page, and warnings when the background looks counted as ink, the drawing is
-almost empty, or a colour barely shows. The command, shell-quoted, is also
-written into the header of `drawing.ts`, so a drawing can be regenerated.
+glyph count, accent cells and their palette entries, colours, `flowerKeys`,
+the lowest contrast of the palette on each page, and warnings when the
+background looks counted as ink, the drawing is almost empty, or a colour
+barely shows.
 
-## 3. Judge the preview and adjust
+## 4. Judge the preview and adjust
 
 Read `preview.png` every time before showing anything, and compare it with
 the source: can you tell what the subject is, is the background empty, and
-does it read on both pages? Then adjust; one or two rounds are usual.
-Scripts of your own that use sharp (crops, overlays) find it when run from
-a folder that has it, such as the site repo.
+does it read on both pages? Then adjust; one or two rounds are usual. To
+compare two settings on the same image, add `--score` to both runs: the
+report gains `fidelity`, how closely the light page follows the source's
+tone and detail inside the drawing (correlations, 1 at best). Use it beside
+your own eye, not instead of it.
 
 | What you see | Change |
 | --- | --- |
 | The background is drawn as glyphs | `--ink paper` or `background`, a higher `--ink-threshold`, or cut the subject out |
 | Pale petals or highlights are missing | `--ink chroma`, `--fill` |
 | Speckle of single glyphs around the subject | raise `--coverage` (0.25–0.3) |
-| Thin parts break up | lower `--coverage` (0.12), or more `--width` |
+| Thin parts break up | lower `--coverage` (0.12), or more columns |
 | Too many slashes, looks scratchy | `--edges 0.95`, a higher `--edge-coherence` (0.4), or `--no-edges` |
+| A big shape of one colour is an even texture (a body, a pale rose) | `--local 0.5`–`1`, so its modelling shows |
+| Too dense and heavy for a light, airy look | `--darkness lightness` (the garland's rule: pale colours get sparse glyphs) |
 | A colour that differs from the page in hue but not lightness is faint (a red on navy, an orange on cream) | on a background colour already counts; on white paper, `--ink background` counts it too (it also moves the ink's edge a little, so compare) |
 | Stems read as blobs | `--edges 0.85` |
 | A small vivid detail came out brown or grey, or is missing | `--accent-hue <range>` measured with `hues.mts`; lower `--accent` (0.08) if it is only a few dabs |
@@ -134,7 +165,8 @@ a folder that has it, such as the site repo.
 | Wrong way round, or should face the other way | `--flop` |
 | The user wants other flower colours | `--hue-map 225-350:196-206` (violets to sky blue), or `--recolour garland` for the garland's own recolouring |
 
-Every option is listed with `--help`.
+For a drawing made from your own SVG, fix in the SVG what the SVG got wrong
+(references/drawing-a-subject.md) before reaching for these.
 
 ### White petals
 
@@ -154,45 +186,22 @@ colour of the petals. What works:
 On a light page they will read as warm grey; on a dark page they look
 white. Say so rather than pushing the contrast until they look beige.
 
-## 4. Deliver
+## 5. Deliver
 
 **Standalone.** Send `preview.png` (or `light.png`) so the user sees it at
 once, and point to `index.html`, which is the real thing: text that can be
-selected and copied, sized to its box, light and dark. Give it a `--title`
-(and `--lang ja` for a Japanese page); otherwise its title comes from
-`--name` or the file name.
+selected and copied, sized to its box, light and dark, grid on or off. Give
+it a `--title` (and `--lang ja` for a Japanese page); otherwise its title
+comes from `--name` or the file name. Mention `ascii.txt` when the user
+wants to paste the drawing somewhere.
 
-**On unvalley.me.** The site draws these with `components/AsciiArt.tsx`
-(type `AsciiDrawing` in `components/flowerVineArt.ts`), the way
-`components/FlowerVine.tsx` draws the garland:
+**In a React site.** Copy [assets/AsciiArt.tsx](assets/AsciiArt.tsx) beside
+`drawing.ts` and render `<AsciiArt name="<unique-name>" drawing={...} />`:
+`grid` for the grid, `theme="class"` when the site marks dark mode with a
+`dark` class, and `label` when the drawing is content rather than
+decoration. The name scopes its colour variables, so each drawing on a page
+needs its own.
 
-1. Put the `drawing.ts` export in a module beside them, for example
-   `components/<name>Art.ts`, keeping `import type { AsciiDrawing } from
-   "./flowerVineArt"`. Name the export with `--name` and rewrite its doc
-   comment to say what the drawing is, in plain words, as the site's
-   comments do (it starts from `--title`, `--name` or the file name). Keep the header line with the command, so it can be
-   regenerated.
-2. Render it with `<AsciiArt name="<unique-name>" drawing={...} />`. The
-   name scopes its colour variables, so each drawing needs its own. Mark it
-   `aria-hidden` when it is decoration, as the garland is.
-3. For the twinkling sparkles over flowers, convert with `--sparkle-hue`
-   set to the flowers' hues (the garland used `180-225`, its sky blues) so
-   `flowerKeys` lists their colours, then wrap it in `AsciiSparkles` with
-   `sparkleCells(drawing)` as `FlowerVine.tsx` does. For small flowers in a
-   bigger picture, give `--accent-hue` and `--sparkle-hue` the same range,
-   so the sparkles land on exactly those cells; `flowers.png` shows them.
-   Most big stars appear in blank cells next to flowers, so a full-bleed
-   drawing with no blank cells gets fewer big stars (only on the flowers
-   themselves) and mostly small glints; say so.
-4. For colour schemes like the garland's random ones, add `schemes`: more
-   palettes over the same keys (see the garland in `flowerVineArt.ts`).
-5. Check it in the dev server on both themes and at phone width before
-   calling it done. Committing or pushing to `main` deploys the site, so do
-   that only when the user asks.
-
-## Changing the converter
-
-The converter's test gallery (26 varied images) and the check that
-`--preset garland` still equals the site's garland live in the unvalley.me
-repo, in `scripts/ascii-gallery/`. Its README also says how the converter
-decides, for tuning. Run them there after any change to `convert.mts`.
+**On unvalley.me.** Read [references/unvalley-me.md](references/unvalley-me.md):
+the site has its own `AsciiArt` and type, sparkles over flowers, colour
+schemes, and the garland's preset.

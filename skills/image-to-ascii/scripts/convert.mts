@@ -1,15 +1,18 @@
 #!/usr/bin/env node
-// Turns an image into coloured ASCII art the way the unvalley.me flower
-// garland was made: the image is cut into cells of 4 × 6.5 CSS pixels, a
-// cell with enough ink gets a glyph from a density ramp by how dark it is,
-// or a line glyph (/ \ | - _) when a strong edge runs through it, and a
-// colour from a small k-means palette with a [light page, dark page] pair.
+// Turns an image (PNG, JPEG, WebP, SVG, ...) into coloured ASCII art on a
+// grid of cells, the way the unvalley.me flower garland was made: the image
+// is cut into cells of 4 × 6.5 CSS pixels, a cell with enough ink gets a
+// glyph from a density ramp by how dark it is, or a line glyph (/ \ | - _)
+// when a strong edge runs through it, and a colour from a small k-means
+// palette with a [light page, dark page] pair. The cells can be shown as a
+// grid of thin lines under the glyphs (the default) or not (--no-grid).
 //
 //   node convert.mts <image> <outDir> [options]     (--help lists them)
 //
-// Writes to outDir: ascii.json, drawing.ts (the site's AsciiDrawing),
-// index.html (standalone, selectable text), light.png, dark.png and
-// preview.png (source, light and dark stacked, for judging the result).
+// Writes to outDir: ascii.json, ascii.txt (plain text), index.html
+// (standalone, selectable text), drawing.ts (an AsciiDrawing module),
+// light.png, dark.png and preview.png (source, light and dark stacked, for
+// judging the result).
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -54,6 +57,8 @@ const PRESETS: Record<string, Record<string, string>> = {
     accent: "0",
     "palette-space": "rgb",
     "edge-coherence": "0",
+    grid: "false",
+    darkness: "lightness",
   },
 };
 const DEFAULTS = {
@@ -70,16 +75,20 @@ const DEFAULTS = {
   "sparkle-sat": "0.2",
   "min-contrast": "1.8",
   accent: "0.15",
-  "type-from": "./flowerVineArt",
+  "type-from": "./AsciiArt",
   weight: "bold",
   "palette-space": "oklab",
   "edge-coherence": "0.25",
+  local: "0",
+  darkness: "paint",
+  grid: "true",
 };
 const HELP = `Usage: node convert.mts <image> <outDir> [options]
 
 Size
   --width <px>          Width of the drawing in CSS px (default 672). Columns = width / cell width.
-  --columns <n>         Or give the number of columns directly.
+  --columns <n>         Or give the number of columns directly. With --width too, the cells are
+                        width / columns wide and keep the --cell shape (big cells for a bold grid).
   --cell <w>x<h>        Cell size in CSS px (default 4x6.5, the garland's: Menlo at 6.67px, line height 0.975).
 Glyphs
   --ramp <chars>        Density ramp, lightest to darkest (default ".:+*ox%#@").
@@ -88,6 +97,8 @@ Glyphs
   --edge-coherence <c>  Least coherence (0–1) of an edge for a line glyph (default 0.25), so
                         texture does not turn into stray slashes.
   --coverage <f>        Share of a cell that must be ink to draw it (default 0.17).
+  --local <k>           Local contrast, 0 (default) to about 1: darker and lighter than the cells
+                        around it count for more, so a big shape of one colour shows its modelling.
 What counts as ink
   --ink <mode>          auto | paper | chroma | alpha | background | all (default auto).
                         paper: darker or more colourful than white paper (the garland's rule).
@@ -95,8 +106,10 @@ What counts as ink
                         alpha: opaque pixels of a transparent cut-out.
                         background: differs from the border's colour (plain dark or coloured backgrounds).
                         all: every pixel (full-bleed photos and paintings).
-                        Darkness is lightness on paper; on a background it is the OKLab distance
-                        from the ground, colourfulness counted twice.
+  --darkness <rule>     paint | lightness (default paint): how dark a cell on white paper or a
+                        cut-out is. paint: its colour's distance from white, colourfulness counted
+                        twice, so bright yellows and pinks get dense glyphs. lightness: the
+                        garland's rule, lightness alone.
   --ink-threshold <f>   Colour distance from the background for --ink background (default 0.1).
   --fill                Count pale areas enclosed by ink as ink (highlights inside petals).
   --flop                Mirror left to right.
@@ -119,16 +132,22 @@ Colour
                         (default none).
   --sparkle-sat <f>     Least saturation of a flower colour (default 0.2).
 Output
+  --no-grid             Draw the glyphs alone. By default the previews and index.html show the cells
+                        as a grid of thin lines under the glyphs, and index.html has a switch for it.
   --name <ident>        Export name in drawing.ts (default from the file name).
   --title <text>        Title and label of index.html (default from the file name).
   --lang <code>         Language of index.html, e.g. ja (default en).
-  --type-from <path>    Where drawing.ts imports AsciiDrawing from (default ./flowerVineArt).
+  --type-from <path>    Where drawing.ts imports AsciiDrawing from (default ./AsciiArt, the skill's
+                        assets/AsciiArt.tsx copied beside it; ./flowerVineArt on unvalley.me).
   --weight <w>          Font weight of the previews (default bold, as on the site).
+  --score               Add "fidelity" to the report: how closely the light page follows the source
+                        inside the drawing (tone and detail, correlations up to 1), to compare settings.
   --preset garland      The garland's exact settings; later options still override.
 `;
 
 const { values: given, positionals } = parseArgs({
   allowPositionals: true,
+  allowNegative: true,
   options: {
     width: { type: "string" },
     columns: { type: "string" },
@@ -139,6 +158,9 @@ const { values: given, positionals } = parseArgs({
     "edge-coherence": { type: "string" },
     "palette-space": { type: "string" },
     coverage: { type: "string" },
+    local: { type: "string" },
+    darkness: { type: "string" },
+    score: { type: "boolean" },
     ink: { type: "string" },
     "ink-threshold": { type: "string" },
     fill: { type: "boolean" },
@@ -157,6 +179,7 @@ const { values: given, positionals } = parseArgs({
     lang: { type: "string" },
     "type-from": { type: "string" },
     weight: { type: "string" },
+    grid: { type: "boolean" },
     preset: { type: "string" },
     help: { type: "boolean", short: "h" },
   },
@@ -170,6 +193,7 @@ if (given.preset && !PRESETS[given.preset]) {
   process.exit(1);
 }
 const opt = { ...DEFAULTS, ...(given.preset ? PRESETS[given.preset] : {}), ...given };
+const GRID = String(opt.grid) !== "false";
 const sharp = loadSharp();
 const [input, outDir] = positionals;
 function fail(message: string): never {
@@ -178,10 +202,15 @@ function fail(message: string): never {
 }
 if (!existsSync(input)) fail(`No such image: ${input}`);
 
-const [CELL_W, CELL_H] = opt.cell.split("x").map(Number);
-if (!(CELL_W > 0 && CELL_H > 0)) fail(`--cell must look like 4x6.5, not "${opt.cell}"`);
-const COLS = opt.columns ? Math.round(Number(opt.columns)) : Math.round(Number(opt.width) / CELL_W);
+const [CELL_W0, CELL_H0] = opt.cell.split("x").map(Number);
+if (!(CELL_W0 > 0 && CELL_H0 > 0)) fail(`--cell must look like 4x6.5, not "${opt.cell}"`);
+// --columns with --width: the cells grow or shrink to fit, keeping their shape.
+const sized = given.columns !== undefined && given.width !== undefined;
+const COLS = opt.columns ? Math.round(Number(opt.columns)) : Math.round(Number(opt.width) / CELL_W0);
+const CELL_W = sized ? +(Number(opt.width) / COLS).toFixed(4) : CELL_W0;
+const CELL_H = sized ? +((CELL_W * CELL_H0) / CELL_W0).toFixed(4) : CELL_H0;
 const WIDTH = opt.columns ? COLS * CELL_W : Number(opt.width);
+if (!(WIDTH > 0)) fail(`--width must be a number of px, not "${opt.width}"`);
 if (!(COLS >= 4)) fail("The drawing needs at least 4 columns.");
 const SX = 4;
 const SY = 6;
@@ -205,6 +234,9 @@ const ACCENT_HUES = (opt["accent-hue"] ?? [])
     return [Number(x[1]), Number(x[2])];
   });
 const ACCENT = Number(opt.accent) || (ACCENT_HUES.length ? 0.15 : 0);
+const DARKNESS = opt.darkness;
+if (!["paint", "lightness"].includes(DARKNESS)) fail(`--darkness is paint or lightness, not "${DARKNESS}"`);
+const PAPER: RGB = [255, 255, 255];
 
 // ---------------------------------------------------------------- colour
 function rgbOf(h: string): RGB {
@@ -352,8 +384,17 @@ function reach(rgb: RGB, page: Page, target: number): RGB {
 }
 
 // ---------------------------------------------------------------- source
-// Upright by EXIF, mirrored if asked, 8-bit sRGB whatever came in.
-let base = sharp(input, { limitInputPixels: false }).rotate();
+// Upright by EXIF, mirrored if asked, 8-bit sRGB whatever came in. A vector
+// image (an SVG drawn for a described subject) is rasterised large enough
+// that every cell gets many pixels, whatever size its viewBox has.
+const inputMeta = await sharp(input)
+  .metadata()
+  .catch((error: Error) => fail(`Cannot read ${input} as an image: ${error.message}`));
+const density =
+  inputMeta.format === "svg" && inputMeta.width
+    ? Math.min(72 * 40, Math.max(72, (72 * Math.max(2000, COLS * SX * 4)) / inputMeta.width))
+    : undefined;
+let base = sharp(input, { limitInputPixels: false, ...(density ? { density } : {}) }).rotate();
 if (opt.flop) base = base.flop();
 const source = await base
   .toColourspace("srgb")
@@ -684,10 +725,16 @@ for (let r = 0; r < ROWS; r++) {
     const strength = Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (SX * SY);
     // The gradient's orientation; the edge runs across it.
     const theta = (0.5 * Math.atan2(2 * jxy, jxx - jyy) * 180) / Math.PI;
-    // On white paper lightness tracks the ink; on a coloured ground a subject
-    // can differ in colour but not in lightness, so its distance in colour is used.
+    // How much paint the cell holds: its colour's distance from the ground in
+    // OKLab, colourfulness counted twice, so a bright yellow petal counts as
+    // paint although it is light. The garland used lightness alone, which
+    // suits its blues and greens but turns yellows and pinks into dots.
     const dark =
-      INK === "background" ? inkAmount(colour, groundAt((c + 0.5) * SX, (r + 0.5) * SY)) : 1 - lum(colour);
+      INK === "background"
+        ? inkAmount(colour, groundAt((c + 0.5) * SX, (r + 0.5) * SY))
+        : DARKNESS === "lightness"
+          ? 1 - lum(colour)
+          : inkAmount(colour, PAPER);
     // How much the gradients agree on one direction: high along a stem or an
     // outline, low in texture.
     const coherence = jxx + jyy > 0 ? Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (jxx + jyy) : 0;
@@ -774,11 +821,44 @@ if (!pts.length)
     `Nothing to draw: no cell had ink (--ink ${INK}). Try --ink all, --ink chroma, a lower --coverage, or more --width.`,
   );
 
-// Darkness is normalised across the drawing, so every drawing uses the
-// whole ramp.
+// --local: each cell's darkness is pushed away from the mean of the ink
+// cells around it (a Gaussian of about three cells across, rows weighted by
+// the cell's shape), so the modelling inside a big shape of one colour (an
+// octopus's body, a pale rose) shows instead of an even texture.
+const LOCAL = Number(opt.local);
+if (!(LOCAL >= 0)) fail(`--local takes a number from 0 (off) to about 1, not "${opt.local}"`);
+const LOCAL_R = 3;
+if (LOCAL > 0) {
+  const R = Math.ceil(LOCAL_R * 2);
+  const w = (dr: number, dc: number) => Math.exp(-(dr * dr + dc * dc * (CELL_W / CELL_H) ** 2) / (2 * LOCAL_R * LOCAL_R));
+  const means = pts.map((p) => {
+    let sw = 0;
+    let sd = 0;
+    for (let r = p.r - R; r <= p.r + R; r++)
+      for (let c = p.c - R; c <= p.c + R; c++) {
+        const q = r >= 0 && c >= 0 && r < ROWS && c < COLS ? cells[r * COLS + c] : null;
+        if (!q) continue;
+        const k = w(r - p.r, c - p.c);
+        sw += k;
+        sd += k * q.dark;
+      }
+    return sd / sw;
+  });
+  pts.forEach((p, i) => {
+    p.dark = p.dark + LOCAL * (p.dark - means[i]);
+  });
+}
+// Darkness is spread over the ramp from the drawing's palest cells (5th
+// percentile) to its darkest (97th), so every drawing uses the whole ramp.
 const darks = pts.map((c) => c.dark).sort((a, b) => a - b);
 const q = (p: number) => darks[Math.floor(p * (darks.length - 1))];
-const lo = q(0.05);
+// The palest glyph is for faint paint. On white paper or a cut-out, when
+// even the palest cells hold a lot of paint (a sunflower's yellow petals),
+// the ramp starts at 0.1 instead, so they are not drawn as dots. On a
+// coloured or dark ground every cell is far from the ground, and starting
+// low would make the whole subject one dense block, so the ramp stretches
+// from the palest cells there, as it does with the garland's lightness rule.
+const lo = DARKNESS === "lightness" || INK === "background" ? q(0.05) : Math.min(q(0.05), 0.1);
 const hi = q(0.97);
 const strengths = pts.map((c) => c.strength).sort((a, b) => a - b);
 const EDGE = strengths[Math.floor(EDGE_Q * (strengths.length - 1))];
@@ -898,6 +978,7 @@ for (let r = 0; r < ROWS; r++) {
 // Drop empty rows at the top and bottom; the columns stay, so the width
 // in CSS px is what was asked for.
 const filled = art.map((row, i) => (row.trim() ? i : -1)).filter((i) => i >= 0);
+const firstRow = filled[0];
 art = art.slice(filled[0], filled.at(-1)! + 1);
 tone = tone.slice(filled[0], filled.at(-1)! + 1);
 const rows = art.length;
@@ -937,13 +1018,17 @@ writeFileSync(
       colour: tone,
       palette,
       flowerKeys,
+      grid: GRID,
     },
     null,
     1,
   )}\n`,
 );
+// ascii.txt: the glyphs alone, to paste where colour cannot go.
+writeFileSync(path.join(outDir, "ascii.txt"), `${art.map((row) => row.trimEnd()).join("\n")}\n`);
 
-// drawing.ts: an AsciiDrawing for components/AsciiArt.tsx on unvalley.me.
+// drawing.ts: an AsciiDrawing for the skill's assets/AsciiArt.tsx, or for
+// components/AsciiArt.tsx on unvalley.me (--type-from ./flowerVineArt).
 const rawSafe = art.every((row) => !row.includes("`") && !row.includes("${"));
 const block = (rowsOf: string[], raw: string | null) =>
   raw
@@ -1002,51 +1087,85 @@ art.forEach((row, r) => {
   run = null;
   if (r < rows - 1) body += "\n";
 });
+// The font size makes the columns fill the box in a font whose glyphs are
+// 0.6em wide (Menlo, SF Mono, DejaVu Sans Mono, Courier New). Cells are
+// measured in `ch`, the font's own glyph width, so the glyphs and the grid
+// stay in their cells, and the cells keep their shape, in any monospace font.
 const GLYPH = 0.6;
+const ASPECT = +(CELL_H / CELL_W).toFixed(4);
+const title = opt.title ?? `${label} in ASCII`;
+const toggle = (attr: string, on: string, off: string) =>
+  `const d=document.documentElement;d.dataset.${attr}=d.dataset.${attr}==='${on}'?'${off}':'${on}'`;
 writeFileSync(
   path.join(outDir, "index.html"),
   `<!doctype html>
-<html lang="${esc(opt.lang ?? "en")}">
+<html lang="${esc(opt.lang ?? "en")}" data-grid="${GRID ? "on" : "off"}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(opt.title ?? `${label} in ASCII`)}</title>
+<title>${esc(title)}</title>
 <style>
-:root{--page:#ffffff;--ui:#6b7280;${vars(0)};color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--page:#0a0a0a;--ui:#9ca3af;${vars(1)};color-scheme:dark}}
-:root[data-theme=dark]{--page:#0a0a0a;--ui:#9ca3af;${vars(1)};color-scheme:dark}
-body{margin:0;min-height:100vh;background:var(--page);display:grid;place-items:center;padding:16px;box-sizing:border-box}
-main{width:min(100%,${COLS * CELL_W}px);container-type:inline-size}
-pre{margin:0 auto;width:${COLS}ch;overflow:hidden;font:700 calc(100cqw / ${COLS * GLYPH})/${+(CELL_H / (CELL_W / GLYPH)).toFixed(4)} ui-monospace,Menlo,Consolas,monospace}
+:root{--page:#ffffff;--ui:#6b7280;--line:rgb(0 0 0/.16);${vars(0)};color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--page:#0a0a0a;--ui:#9ca3af;--line:rgb(255 255 255/.2);${vars(1)};color-scheme:dark}}
+:root[data-theme=dark]{--page:#0a0a0a;--ui:#9ca3af;--line:rgb(255 255 255/.2);${vars(1)};color-scheme:dark}
+body{margin:0;min-height:100vh;background:var(--page);display:grid;place-items:center;padding:48px 16px;box-sizing:border-box}
+main{width:min(100%,${+(COLS * CELL_W).toFixed(2)}px);container-type:inline-size}
+pre{margin:0 auto;width:${COLS}ch;overflow:hidden;font:700 calc(100cqw / ${+(COLS * GLYPH).toFixed(3)}) Menlo,ui-monospace,"SF Mono","DejaVu Sans Mono","Liberation Mono","Courier New",monospace;line-height:calc(1ch * ${ASPECT})}
+[data-grid=on] pre{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:1ch calc(1ch * ${ASPECT});box-shadow:1px 1px 0 0 var(--line)}
 ${Object.keys(palette)
   .map((k) => `.${k}{color:var(--${k})}`)
   .join("")}
-button{position:fixed;top:12px;right:12px;font:500 13px/1 system-ui,sans-serif;color:var(--ui);background:none;border:0;padding:8px;cursor:pointer}
+nav{position:fixed;top:8px;right:8px;display:flex;gap:4px}
+button{font:500 13px/1 system-ui,sans-serif;color:var(--ui);background:none;border:0;padding:8px;cursor:pointer}
+[data-grid=on] .grid{color:inherit}
 </style>
 </head>
 <body>
+<nav>
+<button type="button" class="grid" aria-pressed="${GRID}" onclick="${toggle("grid", "on", "off")};this.setAttribute('aria-pressed',d.dataset.grid==='on')">grid</button>
 <button type="button" onclick="const d=document.documentElement;const dark=d.dataset.theme?d.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;d.dataset.theme=dark?'light':'dark'">light / dark</button>
+</nav>
 <main><pre aria-label="${esc(opt.title ?? `${label}, drawn in ASCII`)}">${body}</pre></main>
 </body>
 </html>
 `,
 );
 
-// Previews: each glyph placed on the grid, in Menlo bold as on the site.
-async function render(page: Page, index: number, scale: number, colours = palette) {
+// Previews: each glyph placed in its cell, in Menlo bold as on the site, and
+// set on its baseline as a browser sets a line of that height (Menlo's
+// ascent 0.928em and descent 0.236em, centred in the line), so the previews
+// match index.html. The grid is a line of one device pixel along the top
+// and left of every cell, and along the right and bottom of the drawing,
+// under the glyphs, in the colours index.html uses.
+const FONT = CELL_W / 0.602;
+const BASELINE = (CELL_H - 1.164 * FONT) / 2 + 0.928 * FONT;
+async function render(page: Page, index: number, scale: number, colours = palette, grid = GRID) {
   let g = "";
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < COLS; c++) {
       const ch = art[r][c];
       if (ch === " ") continue;
-      g += `<text x="${c * CELL_W}" y="${(r + 0.8) * CELL_H}" fill="${colours[tone[r][c]][index]}">${esc(ch)}</text>`;
+      g += `<text x="${+(c * CELL_W).toFixed(3)}" y="${+(r * CELL_H + BASELINE).toFixed(3)}" fill="${colours[tone[r][c]][index]}">${esc(ch)}</text>`;
     }
   const W = COLS * CELL_W;
   const H = rows * CELL_H;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * scale)}" height="${Math.round(H * scale)}" viewBox="0 0 ${W} ${H}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/><g font-family="Menlo, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${CELL_W / 0.602}" xml:space="preserve">${g}</g></svg>`;
+  const PW = Math.round(W * scale);
+  const PH = Math.round(H * scale);
+  let lines = "";
+  if (grid) {
+    // In device pixels, on pixel centres, so each line is one crisp pixel.
+    const at = (v: number, max: number) => Math.min(max - 0.5, Math.floor(v * scale) + 0.5);
+    let d = "";
+    for (let c = 0; c <= COLS; c++) d += `M${at(c * CELL_W, PW)} 0V${PH}`;
+    for (let r = 0; r <= rows; r++) d += `M0 ${at(r * CELL_H, PH)}H${PW}`;
+    const [stroke, opacity] = page === "light" ? ["#000000", 0.16] : ["#ffffff", 0.2];
+    lines = `<path d="${d}" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="1" shape-rendering="crispEdges" fill="none"/>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/>${lines}<g transform="scale(${scale})" font-family="Menlo, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${FONT}" xml:space="preserve">${g}</g></svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
-const scale = Math.max(1, Math.min(2, 3000 / (COLS * CELL_W)));
+// With the grid, large enough that a cell is about 12 device pixels wide.
+const scale = Math.max(1, Math.min(GRID ? 3 : 2, 3000 / (COLS * CELL_W)));
 const [light, dark] = await Promise.all([render("light", 0, scale), render("dark", 1, scale)]);
 writeFileSync(path.join(outDir, "light.png"), light);
 writeFileSync(path.join(outDir, "dark.png"), dark);
@@ -1097,6 +1216,89 @@ if (pts.length / (COLS * ROWS) > 0.92 && INK !== "all")
   warnings.push("Almost every cell is drawn: the background may be counted as ink. Try --ink paper, background or alpha, or cut the subject out first.");
 if (pts.length < 40) warnings.push("Very few glyphs: try a wider --width, --ink chroma or --fill.");
 if (lowest.light < 1.3 || lowest.dark < 1.3) warnings.push("Some colours barely show on one page: raise --min-contrast.");
+// --score: how closely the light page follows the source inside the
+// drawing. Both maps are darkness per cell (the source's ink, and the
+// rendered glyphs in their colours on white); tone correlates them lightly
+// blurred, detail correlates what a blur of three cells takes away (folds,
+// veins, outlines inside the subject). For comparing settings on one image.
+let fidelity: { tone: number; detail: number } | undefined;
+if (opt.score) {
+  const n = COLS * rows;
+  const srcD = new Float64Array(n);
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < COLS; c++) {
+      let t = 0;
+      for (let sy = 0; sy < SY; sy++)
+        for (let sx = 0; sx < SX; sx++) {
+          const x = c * SX + sx;
+          const y = (r + firstRow) * SY + sy;
+          if (!isInk(x, y)) continue;
+          const p = px(x, y);
+          t += INK === "background" ? inkAmount(p, groundAt(x, y)) : 1 - lum(p);
+        }
+      srcD[r * COLS + c] = t / (SX * SY);
+    }
+  // Measured without the grid, which would add the same lines to every cell,
+  // and at the scale the previews have without it, so the score is the same
+  // with or without the grid.
+  const plain = GRID ? await render("light", 0, Math.max(1, Math.min(2, 3000 / (COLS * CELL_W))), palette, false) : light;
+  const { data: lp } = await sharp(plain)
+    .resize(COLS, rows, { fit: "fill", kernel: "cubic" })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const outD = new Float64Array(n);
+  for (let i = 0; i < n; i++) outD[i] = 1 - lum([lp[i * 3], lp[i * 3 + 1], lp[i * 3 + 2]]);
+  // Inside the drawing only: the cells that have a glyph, so the outline of
+  // the subject, which any drawing gets right, does not dominate.
+  const M = new Uint8Array(n);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < COLS; c++) M[r * COLS + c] = art[r][c] === " " ? 0 : 1;
+  const blur = (m: Float64Array, sigma: number) => {
+    const res = new Float64Array(n);
+    const R = Math.ceil(sigma * 2.5);
+    const sy = sigma * (CELL_W / CELL_H);
+    const Ry = Math.ceil(sy * 2.5);
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < COLS; c++) {
+        if (!M[r * COLS + c]) continue;
+        let a = 0;
+        let w = 0;
+        for (let dr = -Ry; dr <= Ry; dr++)
+          for (let dc = -R; dc <= R; dc++) {
+            const rr = r + dr;
+            const cc = c + dc;
+            if (rr < 0 || cc < 0 || rr >= rows || cc >= COLS || !M[rr * COLS + cc]) continue;
+            const k = Math.exp(-(dc * dc) / (2 * sigma * sigma) - (dr * dr) / (2 * sy * sy));
+            a += k * m[rr * COLS + cc];
+            w += k;
+          }
+        res[r * COLS + c] = a / w;
+      }
+    return res;
+  };
+  const corr = (x: Float64Array, y: Float64Array) => {
+    const inside = [...M.keys()].filter((i) => M[i]);
+    const mx = inside.reduce((t, i) => t + x[i], 0) / inside.length;
+    const my = inside.reduce((t, i) => t + y[i], 0) / inside.length;
+    let sxy = 0;
+    let sxx = 0;
+    let syy = 0;
+    for (const i of inside) {
+      sxy += (x[i] - mx) * (y[i] - my);
+      sxx += (x[i] - mx) ** 2;
+      syy += (y[i] - my) ** 2;
+    }
+    return sxy / Math.sqrt(sxx * syy || 1);
+  };
+  const s1 = blur(srcD, 1);
+  const o1 = blur(outD, 1);
+  const s3 = blur(srcD, 3);
+  const o3 = blur(outD, 3);
+  fidelity = {
+    tone: +corr(s1, o1).toFixed(3),
+    detail: +corr(s1.map((v, i) => v - s3[i]), o1.map((v, i) => v - o3[i])).toFixed(3),
+  };
+}
 const report = {
   out: outDir,
   ink: INK,
@@ -1112,6 +1314,7 @@ const report = {
   colours: used.length,
   flowerKeys,
   minContrast: lowest,
+  ...(fidelity ? { fidelity } : {}),
   ...(warnings.length ? { warnings } : {}),
 };
 console.log(JSON.stringify(report));

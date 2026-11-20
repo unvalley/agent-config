@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <!--
+    A starting point for drawing a subject that convert.mts turns into ASCII.
+    See references/drawing-a-subject.md. Replace the example (a shaded
+    apple with a stem and a leaf) with the subject; keep what helps:
+
+    - No background: the page stays empty and the converter traces the outline.
+    - Each large area is filled with a gradient, light where the light falls
+      and deeper at the rim, so it becomes a range of glyphs, not one.
+    - Lines meant to read as lines (stems, whiskers, veins) are strokes about
+      one cell wide: the viewBox width divided by the columns you plan.
+    - Small parts that must show (eyes, a nose, a stamen) are at least two
+      cells across.
+  -->
+  <defs>
+    <!-- Lit from the upper left. Three stops: highlight, body, shadow. -->
+    <radialGradient id="body" cx="0.38" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#f0624d"/>
+      <stop offset="0.55" stop-color="#cf2f24"/>
+      <stop offset="1" stop-color="#8c1a17"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8cc152"/>
+      <stop offset="1" stop-color="#3f7a2a"/>
+    </linearGradient>
+    <!--
+      Optional: a painted look. Multiplies the drawing by soft grey noise, so
+      flat areas vary from cell to cell like watercolour. Keep the noise grey
+      (the colour matrix copies one channel into all three); coloured noise
+      muddies the palette. Use it by wrapping the drawing in
+      <g filter="url(#paint)">.
+    -->
+    <filter id="paint" x="0" y="0" width="1" height="1">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="7" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="grey"/>
+      <feComponentTransfer in="grey" result="tone">
+        <feFuncR type="linear" slope="0.5" intercept="0.65"/>
+        <feFuncG type="linear" slope="0.5" intercept="0.65"/>
+        <feFuncB type="linear" slope="0.5" intercept="0.65"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="tone" mode="multiply" result="mixed"/>
+      <feComposite in="mixed" in2="SourceGraphic" operator="in"/>
+    </filter>
+  </defs>
+
+  <g>
+    <!-- Stem: a stroke about one cell wide (600 / 100 columns = 6). -->
+    <path d="M300 170 C298 130 305 95 322 70" stroke="#5b3a1e" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <!-- Leaf, with a vein one cell wide in a deeper green. -->
+    <path d="M316 110 C360 70 430 70 470 95 C430 140 360 145 316 110 Z" fill="url(#leaf)"/>
+    <path d="M322 110 C370 100 420 96 462 96" stroke="#2f5e1f" stroke-width="5" fill="none"/>
+    <!-- Body. -->
+    <path d="M300 175 C230 140 120 160 110 290 C100 420 200 540 300 520 C400 540 500 420 490 290 C480 160 370 140 300 175 Z" fill="url(#body)"/>
+    <!-- A highlight, so the body reads as round. -->
+    <ellipse cx="210" cy="260" rx="38" ry="60" fill="#ffffff" fill-opacity="0.28" transform="rotate(-20 210 260)"/>
+  </g>
+</svg>
