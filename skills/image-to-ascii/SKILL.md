@@ -188,6 +188,11 @@ white. Say so rather than pushing the contrast until they look beige.
 
 ## 5. Deliver
 
+In the reply, say in a line or two how the drawing was made, so the user
+can ask for changes: its columns and width, the ink mode the report shows,
+grid on or off, and each option you added and why (for a hue range, that
+you measured it with `hues.mts` and what it covers).
+
 **Standalone.** Send `preview.png` (or `light.png`) so the user sees it at
 once, and point to `index.html`, which is the real thing: text that can be
 selected and copied, sized to its box, light and dark, grid on or off. Give
