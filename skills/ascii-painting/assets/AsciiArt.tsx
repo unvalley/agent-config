@@ -34,21 +34,23 @@ export type Blocks = Readonly<{
   gap: number;
   /** How much of its cell's colour a tile takes, in %: under the ramp's lightest glyph and its densest. */
   shade: readonly [number, number];
+  /** The drawing's density ramp, lightest to densest, when it was not converted with the default. */
+  ramp?: string;
 }>;
 
 const RAMP = ".:+*ox%#@";
 
 /** The tiles under a drawing in blocks, one path per colour and shade. */
-function Tiles({ scope, drawing, blocks }: { scope: string; drawing: AsciiDrawing; blocks: Blocks }) {
+function Tiles({ drawing, blocks }: { drawing: AsciiDrawing; blocks: Blocks }) {
   const { art, tone, columns, cellWidth: cw, cellHeight: ch } = drawing;
-  const { gap, shade } = blocks;
+  const { gap, shade, ramp = RAMP } = blocks;
   const paths = new Map<string, string>();
   art.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) {
-      const i = RAMP.indexOf(row[c]);
+      const i = ramp.indexOf(row[c]);
       const key = tone[r]?.[c];
-      if (row[c] === " " || i < 0 || !key || key === " ") continue;
-      const share = Math.round(shade[0] + ((shade[1] - shade[0]) * i) / (RAMP.length - 1));
+      if (i < 0 || !key || key === " ") continue;
+      const share = Math.round(shade[0] + ((shade[1] - shade[0]) * i) / (ramp.length - 1));
       const id = `${key}:${share}`;
       paths.set(id, `${paths.get(id) ?? ""}M${c * cw + gap} ${r * ch + gap}h${cw - gap}v${ch - gap}h${gap - cw}z`);
     }
@@ -56,7 +58,6 @@ function Tiles({ scope, drawing, blocks }: { scope: string; drawing: AsciiDrawin
   return (
     <svg
       aria-hidden="true"
-      className={scope}
       viewBox={`0 0 ${columns * cw} ${art.length * ch}`}
       preserveAspectRatio="none"
       shapeRendering="crispEdges"
@@ -109,15 +110,14 @@ type Segment = { key: string | null; text: string };
 /** Runs of one colour; spaces and line breaks join the run they follow. */
 function segmentsOf({ art, tone }: AsciiDrawing) {
   const segments: Segment[] = [];
+  const add = (key: string | null, char: string) => {
+    const last = segments.at(-1);
+    if (last && (key === null || last.key === key)) last.text += char;
+    else segments.push({ key, text: char });
+  };
   art.forEach((row, r) => {
-    for (let c = 0; c <= row.length; c++) {
-      const char = c === row.length ? (r < art.length - 1 ? "\n" : "") : row[c];
-      if (!char) continue;
-      const key = char === " " || char === "\n" ? null : (tone[r]?.[c] ?? null);
-      const last = segments.at(-1);
-      if (last && (key === null || last.key === key)) last.text += char;
-      else segments.push({ key, text: char });
-    }
+    for (let c = 0; c < row.length; c++) add(row[c] === " " ? null : (tone[r]?.[c] ?? null), row[c]);
+    if (r < art.length - 1) add(null, "\n");
   });
   return segments;
 }
@@ -203,9 +203,8 @@ export function AsciiArt({
           ...(fit && grid ? { ...gridLines, backgroundSize: `calc(100cqw / ${columns}) ${scaled(cellHeight)}` } : {}),
         }}
       >
-        {blocks && <Tiles scope={scope} drawing={drawing} blocks={blocks} />}
+        {blocks && <Tiles drawing={drawing} blocks={blocks} />}
         <pre
-          className={scope}
           aria-hidden={label ? undefined : true}
           aria-label={label}
           role={label ? "img" : undefined}
