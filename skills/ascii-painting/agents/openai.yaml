@@ -1,0 +1,4 @@
+interface:
+  display_name: "ASCII Painting"
+  short_description: "Draw coloured ASCII art on a grid from an image or a description"
+  default_prompt: "Use $ascii-painting to draw a cat as coloured ASCII art on a grid, as a standalone HTML page."

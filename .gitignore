@@ -7,3 +7,7 @@
 # skills/ + the global skills.sh lock, not these.
 /.agents/
 /skills-lock.json
+
+# ascii-painting: sharp may be installed beside the scripts.
+/skills/ascii-painting/scripts/node_modules/
+/skills/ascii-painting/scripts/package-lock.json
