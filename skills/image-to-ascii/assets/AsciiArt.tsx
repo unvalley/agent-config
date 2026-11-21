@@ -74,6 +74,36 @@ function Tiles({ scope, drawing, blocks }: { scope: string; drawing: AsciiDrawin
 const GLYPH_WIDTH = 0.6;
 const FONTS = 'Menlo, ui-monospace, "SF Mono", "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace';
 
+/**
+ * In blocks every glyph sits inside its tile, as the sky on unvalley.me
+ * draws them. How far the ink of .:+*ox%#@/\|-_ reaches together in Menlo
+ * Bold, in em, from the pen (left, right) and the baseline (up, down), and
+ * the font's ascent and descent, which place the baseline in a line.
+ */
+const INK = { up: 0.77, down: 0.24, left: 0, right: 0.61 };
+const ASCENT = 0.928;
+const DESCENT = 0.236;
+/** Room kept clear inside a tile, around the glyph, in CSS px. */
+const PAD = 0.25;
+
+/**
+ * The font size and the pen (x) and baseline (y) in a cell, in the
+ * drawing's CSS px, that put the ink of every glyph inside its tile, clear
+ * of the gap, centred in the room left.
+ */
+function fitGlyphs(cw: number, ch: number, gap: number) {
+  const roomW = cw - gap - 2 * PAD;
+  const roomH = ch - gap - 2 * PAD;
+  const wide = INK.left + INK.right;
+  const tall = INK.up + INK.down;
+  const size = Math.min(roomW / wide, roomH / tall);
+  return {
+    size,
+    x: gap + PAD + (roomW - wide * size) / 2 + INK.left * size,
+    y: gap + PAD + (roomH - tall * size) / 2 + INK.up * size,
+  };
+}
+
 type Segment = { key: string | null; text: string };
 
 /** Runs of one colour; spaces and line breaks join the run they follow. */
@@ -94,9 +124,7 @@ function segmentsOf({ art, tone }: AsciiDrawing) {
 
 /**
  * Coloured ASCII that spans the width of its box: the font size follows the
- * box through a container query. Cells are measured in `ch`, the font's own
- * glyph width, so the glyphs and the grid stay in their cells in any
- * monospace font. `name` scopes the colour variables, so give each drawing
+ * box through a container query. `name` scopes the colour variables, so give each drawing
  * on a page its own. `theme` says how the page is dark: "media" follows the
  * system, "class" follows a `dark` class on an ancestor. `grid` draws the
  * cells as thin lines under the glyphs; `blocks` draws them in blocks (see
@@ -123,6 +151,31 @@ export function AsciiArt({
   const { art, columns, cellWidth, cellHeight, palette, schemes = [] } = drawing;
   const scope = `ascii-${name}`;
   const aspect = cellHeight / cellWidth;
+  /** A length in the drawing's CSS px, scaled with the box as the text is. */
+  const scaled = (v: number) => `calc(100cqw * ${v / (columns * cellWidth)})`;
+  const gridLines = {
+    backgroundImage:
+      "linear-gradient(to right, var(--ascii-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ascii-line) 1px, transparent 1px)",
+    boxShadow: "1px 1px 0 0 var(--ascii-line)",
+  };
+  // Without blocks a cell is the font's own glyph width, so the glyphs and
+  // the grid stay in their cells in any monospace font. In blocks each glyph
+  // is set smaller, inside its tile; letter-spacing keeps a glyph to a cell.
+  const fit = blocks ? fitGlyphs(cellWidth, cellHeight, blocks.gap) : null;
+  const text = fit
+    ? {
+        width: "100cqw",
+        fontSize: scaled(fit.size),
+        letterSpacing: `calc(100cqw / ${columns} - 1ch)`,
+        lineHeight: scaled(cellHeight),
+        transform: `translate(${scaled(fit.x)}, ${scaled(fit.y - ((cellHeight - (ASCENT + DESCENT) * fit.size) / 2 + ASCENT * fit.size))})`,
+      }
+    : {
+        width: `${columns}ch`,
+        fontSize: `calc(100cqw / ${columns * GLYPH_WIDTH})`,
+        lineHeight: `calc(1ch * ${aspect})`,
+        ...(grid ? { ...gridLines, backgroundSize: `1ch calc(1ch * ${aspect})` } : {}),
+      };
   const variables = (colours: Palette, index: 0 | 1) =>
     Object.entries(colours)
       .map(([key, pair]) => `--${key}:${pair[index]}`)
@@ -141,7 +194,15 @@ export function AsciiArt({
   return (
     <div style={{ containerType: "inline-size" }}>
       <style>{css}</style>
-      <div style={{ position: "relative", width: "fit-content", margin: "0 auto" }}>
+      <div
+        className={scope}
+        style={{
+          position: "relative",
+          width: "fit-content",
+          margin: "0 auto",
+          ...(fit && grid ? { ...gridLines, backgroundSize: `calc(100cqw / ${columns}) ${scaled(cellHeight)}` } : {}),
+        }}
+      >
         {blocks && <Tiles scope={scope} drawing={drawing} blocks={blocks} />}
         <pre
           className={scope}
@@ -153,17 +214,9 @@ export function AsciiArt({
             margin: 0,
             padding: 0,
             overflow: "hidden",
-            width: `${columns}ch`,
-            font: `700 calc(100cqw / ${columns * GLYPH_WIDTH}) ${FONTS}`,
-            lineHeight: `calc(1ch * ${aspect})`,
-            ...(grid
-              ? {
-                  backgroundImage:
-                    "linear-gradient(to right, var(--ascii-line) 1px, transparent 1px), linear-gradient(to bottom, var(--ascii-line) 1px, transparent 1px)",
-                  backgroundSize: `1ch calc(1ch * ${aspect})`,
-                  boxShadow: "1px 1px 0 0 var(--ascii-line)",
-                }
-              : {}),
+            fontWeight: 700,
+            fontFamily: FONTS,
+            ...text,
           }}
         >
           {segmentsOf(drawing).map((segment, i) =>

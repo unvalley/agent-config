@@ -1134,6 +1134,59 @@ ${Object.entries(palette)
 
 // index.html: the drawing as selectable text, on its own.
 const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// In blocks, every glyph sits inside its tile, as the site's sky draws
+// them: the font is sized so that the ink of all the glyphs together fits
+// the tile, clear of the gap and a quarter pixel from its edges, and
+// centred in the room left. How far the ink reaches from the pen (left,
+// right) and from the baseline (up, down) is measured in the previews' font.
+const PREVIEW_FONT = "Menlo, DejaVu Sans Mono, monospace";
+const PAD = 0.25;
+async function measureInk() {
+  const P = 100;
+  const S = 300;
+  const X = 100;
+  const Y = 200;
+  const ink = { up: 0, down: 0, left: 0, right: 0 };
+  for (const g of new Set(`.:+*ox%#@/\\|-_${RAMP}`)) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}"><text x="${X}" y="${Y}" font-family="${PREVIEW_FONT}" font-weight="${opt.weight}" font-size="${P}" xml:space="preserve">${esc(g)}</text></svg>`;
+    const { data } = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let x0 = S;
+    let x1 = -1;
+    let y0 = S;
+    let y1 = -1;
+    for (let y = 0; y < S; y++)
+      for (let x = 0; x < S; x++)
+        if (data[(y * S + x) * 4 + 3] > 8) {
+          x0 = Math.min(x0, x);
+          x1 = Math.max(x1, x);
+          y0 = Math.min(y0, y);
+          y1 = Math.max(y1, y);
+        }
+    if (x1 < 0) continue;
+    ink.up = Math.max(ink.up, (Y - y0) / P);
+    ink.down = Math.max(ink.down, (y1 + 1 - Y) / P);
+    ink.left = Math.max(ink.left, (X - x0) / P);
+    ink.right = Math.max(ink.right, (x1 + 1 - X) / P);
+  }
+  return ink;
+}
+/** In blocks: the font size, and the pen (x) and baseline (y) in a cell, in CSS px. */
+const FIT = await (async () => {
+  if (!BLOCKS) return null;
+  const ink = await measureInk();
+  const roomW = CELL_W - BLOCK_GAP - 2 * PAD;
+  const roomH = CELL_H - BLOCK_GAP - 2 * PAD;
+  if (!(roomW > 0 && roomH > 0)) fail("--block-gap leaves no room in a cell for its glyph: use a smaller gap or bigger cells.");
+  const wide = ink.left + ink.right;
+  const tall = ink.up + ink.down;
+  const size = Math.min(roomW / wide, roomH / tall);
+  return {
+    size,
+    x: BLOCK_GAP + PAD + (roomW - wide * size) / 2 + ink.left * size,
+    y: BLOCK_GAP + PAD + (roomH - tall * size) / 2 + ink.up * size,
+  };
+})();
 const vars = (i: number) =>
   Object.entries(palette)
     .map(([k, pair]) => `--${k}:${pair[i]}`)
@@ -1192,6 +1245,8 @@ const tilesSvg = BLOCKS
       })
       .join("")}</svg>`
   : "";
+/** A length in the drawing's CSS px, scaled with the box as the text is. */
+const cq = (v: number) => `calc(100cqw * ${+(v / (COLS * CELL_W)).toFixed(6)})`;
 const toggle = (attr: string, on: string, off: string) =>
   `const d=document.documentElement;d.dataset.${attr}=d.dataset.${attr}==='${on}'?'${off}':'${on}'`;
 writeFileSync(
@@ -1212,7 +1267,14 @@ main{width:min(100%,${+(COLS * CELL_W).toFixed(2)}px);container-type:inline-size
 .tiles{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 [data-blocks=off] .tiles{display:none}
 pre{position:relative;margin:0 auto;width:${COLS}ch;overflow:hidden;font:700 calc(100cqw / ${+(COLS * GLYPH).toFixed(3)}) Menlo,ui-monospace,"SF Mono","DejaVu Sans Mono","Liberation Mono","Courier New",monospace;line-height:calc(1ch * ${ASPECT})}
-[data-grid=on] pre{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:1ch calc(1ch * ${ASPECT});box-shadow:1px 1px 0 0 var(--line)}
+[data-grid=on] pre{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:1ch calc(1ch * ${ASPECT});box-shadow:1px 1px 0 0 var(--line)}${
+  FIT
+    ? `
+pre{width:100cqw;font-size:${cq(FIT.size)};letter-spacing:calc(100cqw / ${COLS} - 1ch);line-height:${cq(CELL_H)};transform:translate(${cq(FIT.x)},${cq(FIT.y - ((CELL_H - 1.164 * FIT.size) / 2 + 0.928 * FIT.size))})}
+[data-grid=on] pre{background:none;box-shadow:none}
+[data-grid=on] .art{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:calc(100cqw / ${COLS}) ${cq(CELL_H)};box-shadow:1px 1px 0 0 var(--line)}`
+    : ""
+}
 ${Object.keys(palette)
   .map((k) => `.${k}{color:var(--${k})}`)
   .join("")}
@@ -1247,12 +1309,14 @@ ${
 const FONT = CELL_W / 0.602;
 const BASELINE = (CELL_H - 1.164 * FONT) / 2 + 0.928 * FONT;
 async function render(page: Page, index: number, scale: number, colours = palette, grid = GRID, blocks = BLOCKS) {
+  const fitted = blocks ? FIT : null;
   let g = "";
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < COLS; c++) {
       const ch = art[r][c];
       if (ch === " ") continue;
-      g += `<text x="${+(c * CELL_W).toFixed(3)}" y="${+(r * CELL_H + BASELINE).toFixed(3)}" fill="${colours[tone[r][c]][index]}">${esc(ch)}</text>`;
+      const [x, y] = fitted ? [c * CELL_W + fitted.x, r * CELL_H + fitted.y] : [c * CELL_W, r * CELL_H + BASELINE];
+      g += `<text x="${+x.toFixed(3)}" y="${+y.toFixed(3)}" fill="${colours[tone[r][c]][index]}">${esc(ch)}</text>`;
     }
   const W = COLS * CELL_W;
   const H = rows * CELL_H;
@@ -1288,7 +1352,7 @@ async function render(page: Page, index: number, scale: number, colours = palett
       tiles += `<path d="${d}" fill="${fill}" fill-opacity="${Number(share) / 100}" shape-rendering="crispEdges"/>`;
     }
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/>${lines}${tiles}<g transform="scale(${scale})" font-family="Menlo, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${FONT}" xml:space="preserve">${g}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/>${lines}${tiles}<g transform="scale(${scale})" font-family="${PREVIEW_FONT}" font-weight="${opt.weight}" font-size="${fitted ? +fitted.size.toFixed(4) : FONT}" xml:space="preserve">${g}</g></svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 // With the grid or blocks, large enough that a cell is about 12 device pixels wide.

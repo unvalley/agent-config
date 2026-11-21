@@ -43,7 +43,10 @@ local checkout may be behind it, without `blocks` or `components/sky/`.
 
 `components/garlandBlocks.ts` is the garland's watercolour drawn again on
 5 × 8.125 px cells and coloured with the garland's own keys, so it keeps
-its colour schemes and sparkles. `scripts/garland/README.md` says how to
+its colour schemes and sparkles. The site's `AsciiArt` draws its glyphs at
+full size, across the gap, where this skill (and the sky) fit each glyph
+inside its tile; for the garland to fit too, the site's `AsciiArt` needs
+the same fitting as the skill's `assets/AsciiArt.tsx` (`fitGlyphs`). `scripts/garland/README.md` says how to
 make it again: convert with `--preset garland --blocks` (its README still
 names the older `convert.mjs` and `--cell 5x8.125`, which give the same
 glyphs), then pass the `ascii.json` to `scripts/garland/blocks.mts`.

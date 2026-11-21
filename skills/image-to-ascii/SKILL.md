@@ -117,7 +117,9 @@ on unvalley.me, which are both drawn in blocks. Each cell with a density
 glyph gets a tile of its own colour under the glyph: 14% of the colour under
 `.`, rising to 42% under `@`, so dense paint makes strong blocks. A gap of
 1 px along each tile's top and left shows the cells, and line glyphs keep no
-tile, so stems and edges stay light. Blocks change the defaults to suit
+tile, so stems and edges stay light. Every glyph is set smaller, inside its
+tile and centred in it, as the site's sky draws them (about 70% of the usual
+size at 5 × 8.125 px cells). Blocks change the defaults to suit
 them: cells of 5 × 8.125 px (the garland's in blocks; `--cell`, or
 `--columns` with `--width`, still apply) and no grid unless `--grid` is
 given. `--block-shade 8,30` makes them paler and `--block-gap 0` closes the
