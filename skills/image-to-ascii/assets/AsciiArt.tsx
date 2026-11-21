@@ -22,6 +22,54 @@ export type AsciiDrawing = {
   tone: string[];
 };
 
+/**
+ * Drawing in blocks, as the garland and the sky on unvalley.me are: each cell
+ * with a density glyph gets a tile of its own colour under the glyph, paler
+ * under a light glyph and stronger under a dense one, with a gap along its
+ * top and left. Line glyphs (/ \ | - _) keep no tile. A drawing converted
+ * with --blocks says the values it was made for in its header.
+ */
+export type Blocks = Readonly<{
+  /** The gap along a tile's top and left, in the drawing's CSS px. */
+  gap: number;
+  /** How much of its cell's colour a tile takes, in %: under the ramp's lightest glyph and its densest. */
+  shade: readonly [number, number];
+}>;
+
+const RAMP = ".:+*ox%#@";
+
+/** The tiles under a drawing in blocks, one path per colour and shade. */
+function Tiles({ scope, drawing, blocks }: { scope: string; drawing: AsciiDrawing; blocks: Blocks }) {
+  const { art, tone, columns, cellWidth: cw, cellHeight: ch } = drawing;
+  const { gap, shade } = blocks;
+  const paths = new Map<string, string>();
+  art.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      const i = RAMP.indexOf(row[c]);
+      const key = tone[r]?.[c];
+      if (row[c] === " " || i < 0 || !key || key === " ") continue;
+      const share = Math.round(shade[0] + ((shade[1] - shade[0]) * i) / (RAMP.length - 1));
+      const id = `${key}:${share}`;
+      paths.set(id, `${paths.get(id) ?? ""}M${c * cw + gap} ${r * ch + gap}h${cw - gap}v${ch - gap}h${gap - cw}z`);
+    }
+  });
+  return (
+    <svg
+      aria-hidden="true"
+      className={scope}
+      viewBox={`0 0 ${columns * cw} ${art.length * ch}`}
+      preserveAspectRatio="none"
+      shapeRendering="crispEdges"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+    >
+      {[...paths].map(([id, d]) => {
+        const [key, share] = id.split(":");
+        return <path key={id} d={d} style={{ fill: `color-mix(in oklab, var(--${key}) ${share}%, transparent)` }} />;
+      })}
+    </svg>
+  );
+}
+
 /** Advance width of a glyph in the fonts below, in em. */
 const GLYPH_WIDTH = 0.6;
 const FONTS = 'Menlo, ui-monospace, "SF Mono", "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace';
@@ -51,12 +99,14 @@ function segmentsOf({ art, tone }: AsciiDrawing) {
  * monospace font. `name` scopes the colour variables, so give each drawing
  * on a page its own. `theme` says how the page is dark: "media" follows the
  * system, "class" follows a `dark` class on an ancestor. `grid` draws the
- * cells as thin lines under the glyphs. `children` sit on top, in the same box.
+ * cells as thin lines under the glyphs; `blocks` draws them in blocks (see
+ * Blocks). `children` sit on top, in the same box.
  */
 export function AsciiArt({
   name,
   drawing,
   grid = false,
+  blocks,
   theme = "media",
   label,
   children,
@@ -64,6 +114,7 @@ export function AsciiArt({
   name: string;
   drawing: AsciiDrawing;
   grid?: boolean;
+  blocks?: Blocks;
   theme?: "media" | "class";
   /** What the drawing shows, for screen readers; without it the art is hidden from them. */
   label?: string;
@@ -91,12 +142,14 @@ export function AsciiArt({
     <div style={{ containerType: "inline-size" }}>
       <style>{css}</style>
       <div style={{ position: "relative", width: "fit-content", margin: "0 auto" }}>
+        {blocks && <Tiles scope={scope} drawing={drawing} blocks={blocks} />}
         <pre
           className={scope}
           aria-hidden={label ? undefined : true}
           aria-label={label}
           role={label ? "img" : undefined}
           style={{
+            position: "relative",
             margin: 0,
             padding: 0,
             overflow: "hidden",

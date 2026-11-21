@@ -2,7 +2,8 @@
 
 The site draws these with `components/AsciiArt.tsx` (type `AsciiDrawing` in
 `components/flowerVineArt.ts`), the way `components/FlowerVine.tsx` draws
-the garland above the footer.
+the garland above the footer. Work from the site's `main` on GitHub: a
+local checkout may be behind it, without `blocks` or `components/sky/`.
 
 ## Convert for the site
 
@@ -13,9 +14,12 @@ the garland above the footer.
 - `--preset garland` gives the garland's exact settings (the `lightness`
   darkness rule, its recolouring, 12 colours in RGB, no grid). Use it, then
   override what differs, when a drawing should match the garland closely.
-- The site's garland has no grid. A decoration usually goes without one
-  too; use the grid when the drawing is a figure in an article, as in the
-  kanji-flowers post.
+- The garland and the sky are drawn in blocks, so "like the garland" or
+  "like the sky" means `--blocks`. `--preset garland --blocks` gives exactly
+  the glyphs of the garland in blocks (`components/garlandBlocks.ts`, 200
+  columns of 5 × 8.125 px).
+- A decoration usually goes without the grid; use the grid when the drawing
+  is a figure in an article, as in the kanji-flowers post.
 
 ## Add it
 
@@ -26,12 +30,23 @@ the garland above the footer.
    be regenerated.
 2. Render it with `<AsciiArt name="<unique-name>" drawing={...} />`. The
    name scopes its colour variables, so each drawing needs its own. Mark it
-   `aria-hidden` when it is decoration, as the garland is.
+   `aria-hidden` when it is decoration, as the garland is. For blocks, pass
+   `blocks={{ gap: 1, shade: [14, 42] }}`, as `FlowerVine.tsx` does (the
+   values `drawing.ts` names in its header).
 3. For a grid over it, pass an overlay as its child, sized to the drawing's
    columns and rows, as `components/kanji-flowers/AsciiGarland.tsx` does with
    `kanji-flowers/Grid.tsx`. That `Grid` follows the article's switch; for a
    grid that is always on, use the same background on an absolutely
    positioned span without the switch.
+
+## The garland in blocks
+
+`components/garlandBlocks.ts` is the garland's watercolour drawn again on
+5 × 8.125 px cells and coloured with the garland's own keys, so it keeps
+its colour schemes and sparkles. `scripts/garland/README.md` says how to
+make it again: convert with `--preset garland --blocks` (its README still
+names the older `convert.mjs` and `--cell 5x8.125`, which give the same
+glyphs), then pass the `ascii.json` to `scripts/garland/blocks.mts`.
 
 ## Sparkles over flowers
 
@@ -46,11 +61,14 @@ flowers, so a full-bleed drawing with no blank cells gets fewer big stars
 
 ## The sky
 
-The home page's sky (`components/AsciiSky*`) is not made by this skill: its
-own scripts in `scripts/sky/` sort the painting into parts by colour and
-draw the clouds as shaded tiles over open sky. This skill draws a sky whole,
-blue as dense glyphs and clouds as pale ones, which suits a light page; use
-`scripts/sky/` to change the site's sky.
+The home page's sky (`components/AsciiSky*` and `components/sky/`) is drawn
+live by its own engine, from assets made by `scripts/sky/`: tiles of the
+sky's blue on 6 × 9.75 px cells, clouds as shaded white tiles that drift,
+and air the pointer stirs. This skill does not make it. For a still sky in
+the same look, convert a painting with `--ink all --blocks`: it is tiled
+edge to edge, blue tiles under blue glyphs and pale ones in the clouds.
+That reads like the site's sky on a light page; on a dark page the clouds
+become dim gaps, where the site's engine draws them as the brightest tiles.
 
 ## Colour schemes
 
@@ -64,8 +82,8 @@ pushing to `main` deploys the site, so do that only when the user asks.
 
 ## Changing the converter
 
-The converter's test gallery (26 varied images) and the check that
-`--preset garland` still equals the site's garland live in this repository,
-in `scripts/ascii-gallery/`. Its README also says how the converter
-decides, for tuning. Run them after any change to `convert.mts`, with
-`IMAGE_TO_ASCII_DIR` set to the skill folder being changed.
+The converter's test gallery (28 images, two of them skies) and the check
+that `--preset garland` still equals the site's garland live in this
+repository, in `scripts/ascii-gallery/`. Its README also says how the
+converter decides, for tuning. Run them after any change to `convert.mts`,
+with `IMAGE_TO_ASCII_DIR` set to the skill folder being changed.

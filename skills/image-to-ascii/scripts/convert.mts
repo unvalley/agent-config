@@ -5,7 +5,9 @@
 // glyph from a density ramp by how dark it is, or a line glyph (/ \ | - _)
 // when a strong edge runs through it, and a colour from a small k-means
 // palette with a [light page, dark page] pair. The cells can be shown as a
-// grid of thin lines under the glyphs (the default) or not (--no-grid).
+// grid of thin lines under the glyphs (the default) or not (--no-grid), and
+// drawn in blocks (--blocks): a tile of each cell's colour under its glyph,
+// as the garland and the sky on unvalley.me are drawn.
 //
 //   node convert.mts <image> <outDir> [options]     (--help lists them)
 //
@@ -82,6 +84,8 @@ const DEFAULTS = {
   local: "0",
   darkness: "paint",
   grid: "true",
+  "block-gap": "1",
+  "block-shade": "14,42",
 };
 const HELP = `Usage: node convert.mts <image> <outDir> [options]
 
@@ -134,6 +138,14 @@ Colour
 Output
   --no-grid             Draw the glyphs alone. By default the previews and index.html show the cells
                         as a grid of thin lines under the glyphs, and index.html has a switch for it.
+  --blocks              Draw in blocks, as the garland and the sky on unvalley.me are: each cell with
+                        a density glyph gets a tile of its own colour under the glyph, paler under a
+                        light glyph and stronger under a dense one, with a gap along its top and
+                        left; line glyphs keep no tile. Cells default to 5x8.125 and the grid to
+                        off; index.html gets a switch for the blocks.
+  --block-gap <px>      Gap along a tile's top and left, in CSS px (default 1).
+  --block-shade <a,b>   How much of its cell's colour a tile takes, in %, under the lightest glyph
+                        and under the densest (default 14,42, the garland's).
   --name <ident>        Export name in drawing.ts (default from the file name).
   --title <text>        Title and label of index.html (default from the file name).
   --lang <code>         Language of index.html, e.g. ja (default en).
@@ -180,6 +192,9 @@ const { values: given, positionals } = parseArgs({
     "type-from": { type: "string" },
     weight: { type: "string" },
     grid: { type: "boolean" },
+    blocks: { type: "boolean" },
+    "block-gap": { type: "string" },
+    "block-shade": { type: "string" },
     preset: { type: "string" },
     help: { type: "boolean", short: "h" },
   },
@@ -193,7 +208,9 @@ if (given.preset && !PRESETS[given.preset]) {
   process.exit(1);
 }
 const opt = { ...DEFAULTS, ...(given.preset ? PRESETS[given.preset] : {}), ...given };
-const GRID = String(opt.grid) !== "false";
+const BLOCKS = Boolean(opt.blocks);
+// Blocks show the cells themselves, so the grid is off with them unless asked for.
+const GRID = given.grid ?? (BLOCKS ? false : String(opt.grid) !== "false");
 const sharp = loadSharp();
 const [input, outDir] = positionals;
 function fail(message: string): never {
@@ -202,8 +219,11 @@ function fail(message: string): never {
 }
 if (!existsSync(input)) fail(`No such image: ${input}`);
 
-const [CELL_W0, CELL_H0] = opt.cell.split("x").map(Number);
-if (!(CELL_W0 > 0 && CELL_H0 > 0)) fail(`--cell must look like 4x6.5, not "${opt.cell}"`);
+// Blocks need room for a gap and a tile: the garland in blocks has cells of
+// 5 × 8.125, the shape of its usual 4 × 6.5.
+const CELL = given.cell ?? (BLOCKS ? "5x8.125" : opt.cell);
+const [CELL_W0, CELL_H0] = CELL.split("x").map(Number);
+if (!(CELL_W0 > 0 && CELL_H0 > 0)) fail(`--cell must look like 4x6.5, not "${CELL}"`);
 // --columns with --width: the cells grow or shrink to fit, keeping their shape.
 const sized = given.columns !== undefined && given.width !== undefined;
 const COLS = opt.columns ? Math.round(Number(opt.columns)) : Math.round(Number(opt.width) / CELL_W0);
@@ -216,6 +236,18 @@ const SX = 4;
 const SY = 6;
 const RAMP = opt.ramp;
 if (RAMP.length < 2) fail("--ramp needs at least two glyphs.");
+const BLOCK_GAP = Number(opt["block-gap"]);
+if (!(BLOCK_GAP >= 0 && BLOCK_GAP < Math.min(CELL_W, CELL_H)))
+  fail(`--block-gap is a number of px smaller than a cell, not "${opt["block-gap"]}"`);
+const BLOCK_SHADE = opt["block-shade"].split(",").map(Number);
+if (BLOCK_SHADE.length !== 2 || !BLOCK_SHADE.every((v) => v >= 0 && v <= 100))
+  fail(`--block-shade is two percentages such as 14,42, not "${opt["block-shade"]}"`);
+/** How much of its colour a cell's tile takes, in %, or null for no tile (a line glyph, a space). */
+const tileShare = (glyph: string) => {
+  const i = RAMP.indexOf(glyph);
+  if (glyph === " " || i < 0) return null;
+  return Math.round(BLOCK_SHADE[0] + ((BLOCK_SHADE[1] - BLOCK_SHADE[0]) * i) / (RAMP.length - 1));
+};
 const K = Math.round(Number(opt.colours));
 const SEEDS = opt.seed ? opt.seed.split(",").map((h) => rgbOf(h.trim())) : [];
 if (!(K >= 1) || K + SEEDS.length > 52) fail("--colours plus seeds must be between 1 and 52.");
@@ -1028,7 +1060,11 @@ const shellQuote = (v: string) => (/^[\w./:=,+-]+$/.test(v) ? v : `'${v.replace(
 const argv = Object.entries(given)
   .filter(([k]) => k !== "help")
   .flatMap(([k, v]) =>
-    v === true ? [`--${k}`] : (Array.isArray(v) ? v : [v]).flatMap((x) => [`--${k}`, shellQuote(String(x))]),
+    v === true
+      ? [`--${k}`]
+      : v === false
+        ? [`--no-${k}`]
+        : (Array.isArray(v) ? v : [v]).flatMap((x) => [`--${k}`, shellQuote(String(x))]),
   )
   .join(" ");
 const command = `node convert.mts ${shellQuote(path.basename(input))} <outDir>${argv ? ` ${argv}` : ""}`;
@@ -1050,6 +1086,7 @@ writeFileSync(
       palette,
       flowerKeys,
       grid: GRID,
+      blocks: BLOCKS ? { gap: BLOCK_GAP, shade: BLOCK_SHADE } : null,
     },
     null,
     1,
@@ -1068,7 +1105,12 @@ const block = (rowsOf: string[], raw: string | null) =>
 writeFileSync(
   path.join(outDir, "drawing.ts"),
   `// Generated by the image-to-ascii skill from ${path.basename(input)}:
-//   ${command}
+//   ${command}${
+    BLOCKS
+      ? `
+// Drawn in blocks: <AsciiArt drawing={${name}} blocks={{ gap: ${BLOCK_GAP}, shade: [${BLOCK_SHADE.join(", ")}] }} />`
+      : ""
+  }
 import type { AsciiDrawing } from "${opt["type-from"]}";
 
 const lines = (text: string) => text.split("\\n").slice(1, -1);
@@ -1125,12 +1167,37 @@ art.forEach((row, r) => {
 const GLYPH = 0.6;
 const ASPECT = +(CELL_H / CELL_W).toFixed(4);
 const title = opt.title ?? `${label} in ASCII`;
+// The tiles, as the site draws them: one path per colour and shade, in the
+// drawing's own pixels, stretched over the text's box.
+const tilePaths = new Map<string, string>();
+art.forEach((row, r) => {
+  for (let c = 0; c < COLS; c++) {
+    const share = tileShare(row[c] ?? " ");
+    if (share === null) continue;
+    const id = `${tone[r][c]}:${share}`;
+    const x = +(c * CELL_W + BLOCK_GAP).toFixed(3);
+    const y = +(r * CELL_H + BLOCK_GAP).toFixed(3);
+    const w = +(CELL_W - BLOCK_GAP).toFixed(3);
+    const h = +(CELL_H - BLOCK_GAP).toFixed(3);
+    tilePaths.set(id, `${tilePaths.get(id) ?? ""}M${x} ${y}h${w}v${h}h${-w}z`);
+  }
+});
+const tilesSvg = BLOCKS
+  ? `<svg class="tiles" aria-hidden="true" viewBox="0 0 ${+(COLS * CELL_W).toFixed(3)} ${+(rows * CELL_H).toFixed(3)}" preserveAspectRatio="none" shape-rendering="crispEdges">${[
+      ...tilePaths,
+    ]
+      .map(([id, d]) => {
+        const [key, share] = id.split(":");
+        return `<path d="${d}" style="fill:color-mix(in oklab,var(--${key}) ${share}%,transparent)"/>`;
+      })
+      .join("")}</svg>`
+  : "";
 const toggle = (attr: string, on: string, off: string) =>
   `const d=document.documentElement;d.dataset.${attr}=d.dataset.${attr}==='${on}'?'${off}':'${on}'`;
 writeFileSync(
   path.join(outDir, "index.html"),
   `<!doctype html>
-<html lang="${esc(opt.lang ?? "en")}" data-grid="${GRID ? "on" : "off"}">
+<html lang="${esc(opt.lang ?? "en")}" data-grid="${GRID ? "on" : "off"}"${BLOCKS ? ' data-blocks="on"' : ""}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1141,22 +1208,30 @@ writeFileSync(
 :root[data-theme=dark]{--page:#0a0a0a;--ui:#9ca3af;--line:rgb(255 255 255/.2);${vars(1)};color-scheme:dark}
 body{margin:0;min-height:100vh;background:var(--page);display:grid;place-items:center;padding:48px 16px;box-sizing:border-box}
 main{width:min(100%,${+(COLS * CELL_W).toFixed(2)}px);container-type:inline-size}
-pre{margin:0 auto;width:${COLS}ch;overflow:hidden;font:700 calc(100cqw / ${+(COLS * GLYPH).toFixed(3)}) Menlo,ui-monospace,"SF Mono","DejaVu Sans Mono","Liberation Mono","Courier New",monospace;line-height:calc(1ch * ${ASPECT})}
+.art{position:relative;width:fit-content;margin:0 auto}
+.tiles{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+[data-blocks=off] .tiles{display:none}
+pre{position:relative;margin:0 auto;width:${COLS}ch;overflow:hidden;font:700 calc(100cqw / ${+(COLS * GLYPH).toFixed(3)}) Menlo,ui-monospace,"SF Mono","DejaVu Sans Mono","Liberation Mono","Courier New",monospace;line-height:calc(1ch * ${ASPECT})}
 [data-grid=on] pre{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px);background-size:1ch calc(1ch * ${ASPECT});box-shadow:1px 1px 0 0 var(--line)}
 ${Object.keys(palette)
   .map((k) => `.${k}{color:var(--${k})}`)
   .join("")}
 nav{position:fixed;top:8px;right:8px;display:flex;gap:4px}
 button{font:500 13px/1 system-ui,sans-serif;color:var(--ui);background:none;border:0;padding:8px;cursor:pointer}
-[data-grid=on] .grid{color:inherit}
+[data-grid=on] .grid,[data-blocks=on] .blocks{color:inherit}
 </style>
 </head>
 <body>
 <nav>
-<button type="button" class="grid" aria-pressed="${GRID}" onclick="${toggle("grid", "on", "off")};this.setAttribute('aria-pressed',d.dataset.grid==='on')">grid</button>
+${
+  BLOCKS
+    ? `<button type="button" class="blocks" aria-pressed="true" onclick="${toggle("blocks", "on", "off")};this.setAttribute('aria-pressed',d.dataset.blocks==='on')">blocks</button>
+`
+    : ""
+}<button type="button" class="grid" aria-pressed="${GRID}" onclick="${toggle("grid", "on", "off")};this.setAttribute('aria-pressed',d.dataset.grid==='on')">grid</button>
 <button type="button" onclick="const d=document.documentElement;const dark=d.dataset.theme?d.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;d.dataset.theme=dark?'light':'dark'">light / dark</button>
 </nav>
-<main><pre aria-label="${esc(opt.title ?? `${label}, drawn in ASCII`)}">${body}</pre></main>
+<main><div class="art">${tilesSvg}<pre aria-label="${esc(opt.title ?? `${label}, drawn in ASCII`)}">${body}</pre></div></main>
 </body>
 </html>
 `,
@@ -1167,10 +1242,11 @@ button{font:500 13px/1 system-ui,sans-serif;color:var(--ui);background:none;bord
 // ascent 0.928em and descent 0.236em, centred in the line), so the previews
 // match index.html. The grid is a line of one device pixel along the top
 // and left of every cell, and along the right and bottom of the drawing,
-// under the glyphs, in the colours index.html uses.
+// under the glyphs, in the colours index.html uses. Blocks are tiles of each
+// cell's colour at its share, between the grid and the glyphs.
 const FONT = CELL_W / 0.602;
 const BASELINE = (CELL_H - 1.164 * FONT) / 2 + 0.928 * FONT;
-async function render(page: Page, index: number, scale: number, colours = palette, grid = GRID) {
+async function render(page: Page, index: number, scale: number, colours = palette, grid = GRID, blocks = BLOCKS) {
   let g = "";
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < COLS; c++) {
@@ -1192,11 +1268,31 @@ async function render(page: Page, index: number, scale: number, colours = palett
     const [stroke, opacity] = page === "light" ? ["#000000", 0.16] : ["#ffffff", 0.2];
     lines = `<path d="${d}" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="1" shape-rendering="crispEdges" fill="none"/>`;
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/>${lines}<g transform="scale(${scale})" font-family="Menlo, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${FONT}" xml:space="preserve">${g}</g></svg>`;
+  let tiles = "";
+  if (blocks) {
+    // In device pixels, so every gap is the same width.
+    const paths = new Map<string, string>();
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < COLS; c++) {
+        const share = tileShare(art[r][c]);
+        if (share === null) continue;
+        const id = `${colours[tone[r][c]][index]}:${share}`;
+        const x0 = Math.round((c * CELL_W + BLOCK_GAP) * scale);
+        const y0 = Math.round((r * CELL_H + BLOCK_GAP) * scale);
+        const x1 = Math.round((c + 1) * CELL_W * scale);
+        const y1 = Math.round((r + 1) * CELL_H * scale);
+        paths.set(id, `${paths.get(id) ?? ""}M${x0} ${y0}H${x1}V${y1}H${x0}z`);
+      }
+    for (const [id, d] of paths) {
+      const [fill, share] = id.split(":");
+      tiles += `<path d="${d}" fill="${fill}" fill-opacity="${Number(share) / 100}" shape-rendering="crispEdges"/>`;
+    }
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}"><rect width="100%" height="100%" fill="${hex(PAGE[page])}"/>${lines}${tiles}<g transform="scale(${scale})" font-family="Menlo, DejaVu Sans Mono, monospace" font-weight="${opt.weight}" font-size="${FONT}" xml:space="preserve">${g}</g></svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
-// With the grid, large enough that a cell is about 12 device pixels wide.
-const scale = Math.max(1, Math.min(GRID ? 3 : 2, 3000 / (COLS * CELL_W)));
+// With the grid or blocks, large enough that a cell is about 12 device pixels wide.
+const scale = Math.max(1, Math.min(GRID || BLOCKS ? 3 : 2, 3000 / (COLS * CELL_W)));
 const [light, dark] = await Promise.all([render("light", 0, scale), render("dark", 1, scale)]);
 writeFileSync(path.join(outDir, "light.png"), light);
 writeFileSync(path.join(outDir, "dark.png"), dark);
@@ -1269,10 +1365,11 @@ if (opt.score) {
         }
       srcD[r * COLS + c] = t / (SX * SY);
     }
-  // Measured without the grid, which would add the same lines to every cell,
-  // and at the scale the previews have without it, so the score is the same
-  // with or without the grid.
-  const plain = GRID ? await render("light", 0, Math.max(1, Math.min(2, 3000 / (COLS * CELL_W))), palette, false) : light;
+  // Measured on the glyphs alone, without the grid, which would add the same
+  // lines to every cell, or blocks, and at the scale the previews have
+  // without them, so the score is the same with or without either.
+  const plain =
+    GRID || BLOCKS ? await render("light", 0, Math.max(1, Math.min(2, 3000 / (COLS * CELL_W))), palette, false, false) : light;
   const { data: lp } = await sharp(plain)
     .resize(COLS, rows, { fit: "fill", kernel: "cubic" })
     .removeAlpha()
@@ -1344,6 +1441,8 @@ const report = {
   accentKeys,
   colours: used.length,
   flowerKeys,
+  grid: GRID,
+  blocks: BLOCKS,
   minContrast: lowest,
   ...(fidelity ? { fidelity } : {}),
   ...(warnings.length ? { warnings } : {}),

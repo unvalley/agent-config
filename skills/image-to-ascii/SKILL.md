@@ -1,6 +1,6 @@
 ---
 name: image-to-ascii
-description: Draw coloured ASCII art on a grid of cells, from an image (a watercolour, illustration, flower, logo, product photo, cut-out or painting) or from only a description of a subject (a cat, a sunflower, a mountain), in the style of the flower garland on unvalley.me. Glyphs are picked by how much paint a cell holds from .:+*ox%#@, line glyphs / \ | - _ follow stems and edges, each colour has a value for light pages and one for dark, and the cells show as a faint grid unless the user wants the glyphs alone. Delivers previews, a standalone HTML page of selectable text, plain text, or a module for a React site. Use this whenever the user wants an image or photo turned into ASCII art or text art, asks for a drawing of something in ASCII or text (including Japanese requests for ASCII art, AA or text art), wants something like our flowers or the garland, or wants a new ASCII drawing, vine, plant or decoration on unvalley.me, even if they never say ASCII.
+description: Draw coloured ASCII art on a grid of cells, from an image (a watercolour, illustration, flower, logo, photo, cut-out or painting) or from only a description of a subject (a cat, a sunflower, a mountain), in the style of the garland and the sky on unvalley.me. Glyphs are picked by how much paint a cell holds from .:+*ox%#@, line glyphs / \ | - _ follow stems and edges, each colour has a value for light pages and one for dark, and the cells show as a faint grid, as filled blocks of colour under the glyphs, or not at all. Delivers previews, a standalone HTML page of selectable text, plain text, or a module for a React site. Use this whenever the user wants an image or photo turned into ASCII art or text art, asks for a drawing of something in ASCII or text (including Japanese requests for ASCII art, AA or text art), wants something like our flowers, the garland or the sky, or wants a new ASCII drawing, vine, plant or decoration on unvalley.me, even if they never say ASCII.
 ---
 
 # ASCII art on a grid
@@ -16,7 +16,9 @@ with its box.
 
 `scripts/convert.mts` does all of that from any image, SVG included. By
 default it also shows the cells as a grid of thin lines under the glyphs,
-like squared paper; `--no-grid` leaves the glyphs alone on the page.
+like squared paper; `--no-grid` leaves the glyphs alone on the page. With
+`--blocks` it draws in blocks, as the garland and the sky on the site now
+are: each cell with a density glyph sits on a tile of its own colour.
 
 What makes the garland look good is that it is a subject on an empty page:
 the paper between flowers stays blank, so the shapes read. Keep that in mind
@@ -37,8 +39,8 @@ can still be nice but looks different, so say so.
   first run.
 
 Ask the user only what the request leaves open and the result depends on:
-usually nothing. Pick a size and the grid by the rules below and say what
-you picked.
+usually nothing. Pick a size and how the cells show by the rules below and
+say what you picked.
 
 ## 2. Look at the image
 
@@ -101,14 +103,29 @@ anything going on a web page.
   `--columns` and `--width` together, e.g. `--columns 80 --width 480` for
   cells 6 px wide. The cells keep their shape.
 
-### Grid or not
+### Grid, blocks or neither
 
 The grid is on by default: the previews and `index.html` draw the cells as
 faint lines under the glyphs, and `index.html` has a switch to hide them.
 Convert with `--no-grid` when the user asks for no grid ("without the grid",
-グリッドなし, マス目なし, plain), or when the drawing is a decoration on a
-page, as the garland is. The grid only changes how the drawing is shown:
-the glyphs, `ascii.txt` and `drawing.ts` are the same either way.
+グリッドなし, マス目なし, plain), or when the drawing is a plain decoration
+on a page.
+
+Convert with `--blocks` when the user asks for blocks, tiles or filled cells
+(ブロック, 塗りつぶし, タイル), or for something like the garland or the sky
+on unvalley.me, which are both drawn in blocks. Each cell with a density
+glyph gets a tile of its own colour under the glyph: 14% of the colour under
+`.`, rising to 42% under `@`, so dense paint makes strong blocks. A gap of
+1 px along each tile's top and left shows the cells, and line glyphs keep no
+tile, so stems and edges stay light. Blocks change the defaults to suit
+them: cells of 5 × 8.125 px (the garland's in blocks; `--cell`, or
+`--columns` with `--width`, still apply) and no grid unless `--grid` is
+given. `--block-shade 8,30` makes them paler and `--block-gap 0` closes the
+gaps. A full-bleed drawing (`--ink all`) in blocks is tiled edge to edge,
+the look of the site's sky.
+
+The grid and blocks only change how the drawing is shown: the glyphs,
+`ascii.txt` and `drawing.ts` are the same either way.
 
 ### What it writes
 
@@ -119,19 +136,20 @@ Into `outDir`:
 - `light.png`, `dark.png`: the drawing alone on each page. Crop these to
   judge small details; the preview is scaled down.
 - `index.html`: the drawing as selectable text, standalone, following the
-  system theme, with grid and light/dark switches.
+  system theme, with grid and light/dark switches, and a blocks switch when
+  drawn in blocks.
 - `ascii.txt`: the glyphs alone, for a README, a code comment or a terminal.
 - `drawing.ts`: an `AsciiDrawing` for [assets/AsciiArt.tsx](assets/AsciiArt.tsx)
   (or for unvalley.me, see step 5), with the command that made it in its
-  header.
-- `ascii.json`: the rows, colour keys, palette and grid setting, for other
-  uses.
+  header, and the `blocks` to render it with when drawn in blocks.
+- `ascii.json`: the rows, colour keys, palette, grid and blocks settings,
+  for other uses.
 - `flowers.png`, when `--sparkle-hue` found flower colours: those cells in
   colour and the rest pale.
 
 It prints a one-line JSON report: the ink mode it chose, columns, rows,
 glyph count, accent cells and their palette entries, colours, `flowerKeys`,
-the lowest contrast of the palette on each page, and warnings when the
+whether the grid and blocks are on, the lowest contrast of the palette on each page, and warnings when the
 background looks counted as ink, the drawing is almost empty, or a colour
 barely shows.
 
@@ -142,8 +160,9 @@ the source: can you tell what the subject is, is the background empty, and
 does it read on both pages? Then adjust; one or two rounds are usual. To
 compare two settings on the same image, add `--score` to both runs: the
 report gains `fidelity`, how closely the light page follows the source's
-tone and detail inside the drawing (correlations, 1 at best). Use it beside
-your own eye, not instead of it.
+tone and detail inside the drawing (correlations, 1 at best), measured on
+the glyphs alone, without grid or blocks. Use it beside your own eye, not
+instead of it.
 
 | What you see | Change |
 | --- | --- |
@@ -164,6 +183,8 @@ your own eye, not instead of it.
 | A colour barely shows on one page | raise `--min-contrast` (default 1.8; 2–2.5 for very pale or very dark subjects) |
 | The accent should be redder, bluer, … | `--hue-map` its range onto the hue you want |
 | Wrong way round, or should face the other way | `--flop` |
+| Blocks look heavy, or the glyphs get lost on them | `--block-shade 8,30`; or more columns, so each tile is smaller |
+| Blocks look faint | `--block-shade 20,55` |
 | The user wants other flower colours | `--hue-map 225-350:196-206` (violets to sky blue), or `--recolour garland` for the garland's own recolouring |
 
 For a drawing made from your own SVG, fix in the SVG what the SVG got wrong
@@ -191,23 +212,25 @@ white. Say so rather than pushing the contrast until they look beige.
 
 In the reply, say in a line or two how the drawing was made, so the user
 can ask for changes: its columns and width, the ink mode the report shows,
-grid on or off, and each option you added and why (for a hue range, that
+grid on or off, blocks on or off, and each option you added and why (for a hue range, that
 you measured it with `hues.mts` and what it covers).
 
 **Standalone.** Send `preview.png` (or `light.png`) so the user sees it at
 once, and point to `index.html`, which is the real thing: text that can be
-selected and copied, sized to its box, light and dark, grid on or off. Give
+selected and copied, sized to its box, light and dark, grid and blocks on
+or off. Give
 it a `--title` (and `--lang ja` for a Japanese page); otherwise its title
 comes from `--name` or the file name. Mention `ascii.txt` when the user
 wants to paste the drawing somewhere.
 
 **In a React site.** Copy [assets/AsciiArt.tsx](assets/AsciiArt.tsx) beside
 `drawing.ts` and render `<AsciiArt name="<unique-name>" drawing={...} />`:
-`grid` for the grid, `theme="class"` when the site marks dark mode with a
-`dark` class, and `label` when the drawing is content rather than
-decoration. The name scopes its colour variables, so each drawing on a page
+`grid` for the grid, `blocks={{ gap: 1, shade: [14, 42] }}` for blocks (the
+values `drawing.ts` names in its header), `theme="class"` when the site
+marks dark mode with a `dark` class, and `label` when the drawing is
+content rather than decoration. The name scopes its colour variables, so each drawing on a page
 needs its own.
 
 **On unvalley.me.** Read [references/unvalley-me.md](references/unvalley-me.md):
-the site has its own `AsciiArt` and type, sparkles over flowers, colour
-schemes, and the garland's preset.
+the site has its own `AsciiArt` and type, the garland and sky in blocks,
+sparkles over flowers, colour schemes, and the garland's preset.
