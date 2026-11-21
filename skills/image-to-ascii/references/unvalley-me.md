@@ -44,6 +44,14 @@ does. For small flowers in a bigger picture, give `--accent-hue` and
 flowers, so a full-bleed drawing with no blank cells gets fewer big stars
 (only on the flowers themselves) and mostly small glints; say so.
 
+## The sky
+
+The home page's sky (`components/AsciiSky*`) is not made by this skill: its
+own scripts in `scripts/sky/` sort the painting into parts by colour and
+draw the clouds as shaded tiles over open sky. This skill draws a sky whole,
+blue as dense glyphs and clouds as pale ones, which suits a light page; use
+`scripts/sky/` to change the site's sky.
+
 ## Colour schemes
 
 For random colour schemes like the garland's, add `schemes`: more palettes

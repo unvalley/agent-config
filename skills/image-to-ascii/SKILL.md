@@ -53,7 +53,8 @@ Decide what counts as ink:
 | Subject on a plain dark or coloured ground (flowers on black, a woodblock on orange or navy) | defaults (`auto` picks `background`); if the subject is as dark as the ground, cut it out first |
 | Graded ground (bokashi, a studio vignette) | defaults fit the gradient; if part of it is still drawn, `--ink-threshold 0.2`–`0.25` |
 | Picture in a frame or mat | defaults: a thin frame of one colour is found and the picture inside it used (the report shows `frame`) |
-| Full-bleed painting or scene, wanted whole | `--ink all --colours 24` (auto picks `all` only when no colour dominates the border) and tell the user it fills the whole box |
+| Full-bleed painting or scene, wanted whole | `--ink all --colours 24` (auto picks `all` when no colour dominates the border, or when the one that does would leave half the picture as ink) and tell the user it fills the whole box |
+| A sky, sea or other scene mostly of one colour (clouds over blue) | as above; the report should show `all`, not `background`. It reads like the painting on a light page. On a dark page the clouds become dim gaps, because both pages share the glyphs and a cloud holds little paint: say so |
 
 Also look for small vivid details that matter: poppies in a field, a red
 dot on a black camera, gold stamens. A cell's colour is the average of its

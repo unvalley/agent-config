@@ -533,8 +533,39 @@ const ground = (() => {
     inliers = next;
     coef = fit(inliers);
   }
-  return (u: number, v: number) => evalAt(coef, Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v)));
+  return {
+    at: (u: number, v: number) => evalAt(coef, Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v))),
+    matched: inliers.length / border.samples.length,
+  };
 })();
+
+// A sky, a sea or a landscape can have one colour over most of its border
+// and still no ground: the picture is the subject. When auto chose
+// background but the fitted ground matches little of the border and would
+// leave half the picture or more as ink, the picture is drawn whole
+// instead. Two painted skies matched 58-62% of their border and left 57-59%
+// as ink; a woodblock on a graded orange ground matches about as little of
+// its border (60%) but leaves only 41% as ink.
+if (opt.ink === "auto" && INK === "background" && ground && ground.matched < 0.65) {
+  const W1 = 64;
+  const H1 = Math.max(8, Math.round((region.height / region.width) * W1));
+  const { data: low } = await sharp(source)
+    .flatten({ background: "#ffffff" })
+    .extract(region)
+    .resize(W1, H1, { fit: "fill" })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let inked = 0;
+  for (let y = 0; y < H1; y++)
+    for (let x = 0; x < W1; x++) {
+      const i = (y * W1 + x) * 3;
+      const [r, g, b] = ground.at((x + 0.5) / W1, (y + 0.5) / H1);
+      const d = Math.sqrt(0.3 * (low[i] - r) ** 2 + 0.59 * (low[i + 1] - g) ** 2 + 0.11 * (low[i + 2] - b) ** 2) / 255;
+      if (d > Number(opt["ink-threshold"])) inked++;
+    }
+  if (inked / (W1 * H1) > 0.5) INK = "all";
+}
 
 // The box to draw: the picture (inside any frame) trimmed to its ink, with a
 // small margin.
@@ -604,7 +635,7 @@ const Lat = (x: number, y: number) => L[Math.min(SH - 1, Math.max(0, y)) * SW + 
 // Where a sample (x, y) of the grid lies in the region the ground was fitted over.
 const groundAt = (x: number, y: number): RGB =>
   ground
-    ? ground(
+    ? ground.at(
         (box.left + ((x + 0.5) / SW) * box.width - region.left) / region.width,
         (box.top + ((y + 0.5) / SH) * box.height - region.top) / region.height,
       )
